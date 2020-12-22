@@ -1,4 +1,11 @@
-"""Utility functions for stock analysis."""
+# -*- coding: utf-8 -*-
+"""
+Utility functions for stock analysis.
+
+Created on Sat Oct 31 15:00:05 2020
+
+@author: ryanar
+"""
 
 from functools import wraps
 import re
@@ -9,10 +16,8 @@ def _sanitize_label(label):
     """
     Clean up a label by removing non-letter, non-space characters and
     putting in all lowercase with underscores replacing spaces.
-
     Parameters:
         - label: The text you want to fix.
-
     Returns:
         The sanitized label.
     """
@@ -24,10 +29,8 @@ def label_sanitizer(method):
     clean up all labels in said dataframe (column names and index name)
     by removing non-letter, non-space characters and
     putting in all lowercase with underscores replacing spaces.
-
     Parameters:
         - method: The method to wrap.
-
     Returns:
         A decorated method or function.
     """
@@ -51,20 +54,27 @@ def label_sanitizer(method):
 
 def validate_df(columns, instance_method=True):
     """
-    Decorator that raises a ValueError if input isn't a pandas
-    DataFrame or doesn't contain the proper columns. Note the DataFrame
-    must be the first positional argument passed to this method.
+    Decorator that raises a ValueError if input isn't a pandas DataFrame or doesn't contain the proper columns. Note the DataFrame must be the first positional argument passed to this method.
 
-    Arguments:
-        - columns: A set of column names that the dataframe must have.
-                   For example, {'open', 'high', 'low', 'close'}.
-        - instance_method: Whether or not the item being decorated is
-                           an instance method. Pass False to decorate
-                           static methods and functions.
+    Parameters
+    ----------
+    columns : String or Array of Strings
+        A set of column names that the dataframe must have.
+           For example, {'open', 'high', 'low', 'close'}.
+    instance_method : BOOLEAN, optional
+        Pass False to decorate static methods and functions. The default is True, which is used to decorate an instance method.
 
-    Returns:
+    Raises
+    ------
+    ValueError
+        Must pass in a valid pandas DataFrame.
+
+    Returns
+    -------
+    Function
         A decorated method or function.
-    """
+
+    """    
     def method_wrapper(method):
         @wraps(method)
         def validate_wrapper(self, *args, **kwargs):
@@ -85,10 +95,8 @@ def group_stocks(mapping):
     """
     Create a new dataframe with many assets and a new column indicating
     the asset that row's data belongs to.
-
     Parameters:
         - mapping: A key-value mapping of the form { asset_name : asset_df }
-
     Returns:
         A new pandas DataFrame
     """
@@ -107,10 +115,8 @@ def group_stocks(mapping):
 def describe_group(data):
     """
     Run `describe()` on the asset group created with `group_stocks()`.
-
     Parameters:
         - data: The group data resulting from `group_stocks()`
-
     Returns:
         The transpose of the grouped description statistics.
     """
@@ -120,8 +126,21 @@ def describe_group(data):
 def make_portfolio(data, date_column='date'):
     """
     Make a portfolio of assets by grouping by date and summing all columns.
-
+    
     Note: the caller is responsible for making sure the dates line up across
     assets and handling when they don't.
-    """
+
+    Parameters
+    ----------
+    data : TYPE
+        DESCRIPTION.
+    date_column : TYPE, optional
+        DESCRIPTION. The default is 'date'.
+
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
+
+    """   
     return data.reset_index().groupby('date').sum()
