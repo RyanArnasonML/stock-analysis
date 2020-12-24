@@ -16,7 +16,7 @@ setup(
         'pandas-datareader==0.7.0',
         'seaborn>=0.9.0',
         'pykalman>=0.9.5',
-        'mplfinance>=1.12.0',
+        'mplfinance>=1.12.7a4',
         'statsmodels>=0.10.2'
     ],
 )
