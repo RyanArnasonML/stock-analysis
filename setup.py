@@ -17,6 +17,6 @@ setup(
         'seaborn>=0.9.0',
         'pykalman>=0.9.5',
         'mplfinance>=0.12.7a4',
-        'statsmodels>=0.10.2'
+        'statsmodels>=0.12.1'
     ],
 )
