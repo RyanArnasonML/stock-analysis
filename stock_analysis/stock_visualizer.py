@@ -11,7 +11,7 @@ import math
 
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-import mpl_finance as mpf
+import mplfinance as mpf
 import numpy as np
 import pandas as pd
 import seaborn as sns
