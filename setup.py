@@ -13,7 +13,7 @@ setup(
         'matplotlib>=3.0.2',
         'numpy>=1.15.2',
         'pandas>=0.23.4',
-        'pandas-datareader==0.7.0',
+        'pandas-datareader==0.9.0',
         'seaborn>=0.9.0',
         'pykalman>=0.9.5',
         'mplfinance>=0.12.7a4',
