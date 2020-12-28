@@ -107,7 +107,7 @@ class StockReader:
         # except:
         #     data = web.get_data_yahoo(ticker, self.start, self.end)
         # return data
-        df = pd.read_csv('stock_analysis/data/'+ ticker +'.csv')
+        df = pd.read_csv('../../stock_analysis/data/'+ ticker +'.csv')
         df['Date'] = pd.to_datetime(df['Date'])        
         
         df = df[df['Date'] > self.start]
@@ -134,7 +134,7 @@ class StockReader:
         #                     )[0].sort_index()
         # except:
           
-        df = pd.read_csv('stock_analysis/data/BTC-USD.csv')
+        df = pd.read_csv('../../stock_analysis/data/BTC-USD.csv')
         df['Date'] = pd.to_datetime(df['Date'])        
         
         df = df[df['Date'] > self.start]
