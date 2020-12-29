@@ -12,12 +12,18 @@ import re
 
 import pandas as pd
 #import pandas_datareader.data as web
+import requests
+import json
+import codecs
 
 
 from stock_analysis.utils import label_sanitizer
 
 class StockReader:
     """Class for reading financial data from websites. """
+    
+    RAPIDAPI_KEY  = "6c15347475msh62c656093ec2372p138b2fjsn39929a4ab815" 
+    RAPIDAPI_HOST = "apidojo-yahoo-finance-v1.p.rapidapi.com"
     
     _index_tickers = {
         'SP500' : '^GSPC',
@@ -101,20 +107,56 @@ class StockReader:
         Pandas Dataframe containing stock data.
 
         """
-        # try:
-        #     data = web.DataReader(ticker, 'iex',self.start,self.end)
-        #     data.index = pd.to_datetime(data.Index)
-        # except:
-        #     data = web.get_data_yahoo(ticker, self.start, self.end)
-        # return data
-        df = pd.read_csv('../../stock_analysis/data/'+ ticker +'.csv')
-        df['Date'] = pd.to_datetime(df['Date'])        
         
-        df = df[df['Date'] > self.start]
-        df = df[df['Date'] < self.end]
+        try:
+            df = pd.read_csv('../../stock_analysis/data/'+ ticker +'.csv')
+            df['Date'] = pd.to_datetime(df['Date'])    
+                    
+            df = df[df['Date'] > self.start]
+            df = df[df['Date'] < self.end]
         
-        df.set_index('Date', drop=True, inplace=True)
+            df.set_index('Date', drop=True, inplace=True)
+        except:
+            if(False):
+                url = "https://apidojo-yahoo-finance-v1.p.rapidapi.com/stock/v3/get-historical-data"
             
+                querystring = {"symbol":ticker,"region":"US"}
+                
+                headers = {
+                    'x-rapidapi-key': "6c15347475msh62c656093ec2372p138b2fjsn39929a4ab815",
+                    'x-rapidapi-host': "apidojo-yahoo-finance-v1.p.rapidapi.com"
+                }
+
+                response = requests.request("GET", url, headers=headers, params=querystring)
+                print(response.text)
+            
+                with open(ticker +".json", "w") as outfile:
+                    json.dump(response.json,outfile)
+            # else:
+                print("Hello")            
+
+                df = pd.DataFrame()
+            
+                with open('../../stock_analysis/data/'+ ticker +'.json') as json_file:                            
+                
+                    data = json.load(json_file)                 
+                
+                    for price in data['prices']:
+                        # Ignore the dividend
+                        if (len(price) > 4):
+                            priceDict = {
+                                "date" : datetime.datetime.utcfromtimestamp(price["date"]),
+                                "open" : price["open"],
+                                "close" : price["close"],
+                                "low" : price["low"],
+                                "high" : price["high"],
+                                "volume" : price["volume"]
+                            }                
+                    
+                            df = df.append(priceDict, ignore_index=True)                    
+                
+                    df.set_index('date', drop=True, inplace=True)                                                  
+           
         return df
         
     @label_sanitizer        
