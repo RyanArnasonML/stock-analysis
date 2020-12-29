@@ -118,7 +118,7 @@ class StockReader:
         return df
         
     @label_sanitizer        
-    def get_bitcoin_data(self):
+    def get_bitcoin_data(self, url=False):
         
         """
         Get bitcoin historical open-high-low-close (OHLC) data from coinmarketcap.com for a given date ranger.
@@ -133,8 +133,12 @@ class StockReader:
         #                     'start={}&end{}'.format(self.start,self.end), parse_dates=[0], index_col=[0]
         #                     )[0].sort_index()
         # except:
-          
-        df = pd.read_csv('../../stock_analysis/data/BTC-USD.csv')
+        
+        if url:
+            df = pd.read_csv(url)
+        else:
+            df = pd.read_csv('../../stock_analysis/data/BTC-USD.csv')
+        
         df['Date'] = pd.to_datetime(df['Date'])        
         
         df = df[df['Date'] > self.start]
