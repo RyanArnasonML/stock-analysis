@@ -57,7 +57,7 @@ class StockReader:
             raise ValueError('START date must be before END date')
     
     @property
-    def avalable_tickers(self):
+    def available_tickers(self):
         """
         Access the names of the indices whose tickers are supported.
 
@@ -66,7 +66,7 @@ class StockReader:
         list data type
 
         """
-        return list(self._index_tickers())
+        return list(self._index_tickers.keys())
     
     @classmethod
     def get_index_ticker(cls, index):
@@ -209,8 +209,25 @@ class StockReader:
         A pandas dataframe with the index data.
 
         """
-        if index not in self.avalable_tickers:
-            raise ValueError('Index not supported. Available tickers are:') 
-                             #{',.join(self.available_tickers)})
+        if index not in self.available_tickers:
+            raise ValueError(
+                'Index not supported. '
+                f"Available tickers are: {', '.join(self.available_tickers)}"
+            )
+                             
+        try:
+            
+            df = pd.read_csv('../../stock_analysis/data/'+ self.get_index_ticker(index) +'.csv')
+            df['Date'] = pd.to_datetime(df['Date'])    
+                    
+            df = df[df['Date'] > self.start]
+            df = df[df['Date'] < self.end]
         
-        return web.get_data_yahoo(self.get_index_ticker(index),self.start, self.end)
+            df.set_index('Date', drop=True, inplace=True)
+            
+        except:
+            df = pd.DataFrame()
+            
+            raise ValueError("Couldn't get the data for the index.")                     
+        
+        return df
