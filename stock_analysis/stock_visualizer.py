@@ -147,7 +147,7 @@ class Visualizer:
         """
         Add line(s) for the moving average of a column.
         Parameters:
-            - column: The name of the column to plot.
+            - column: The name of the column ('close','open', 'high','low' and 'volume') to plot.
             - periods: The rule or list of rules for resampling,
                        like '20D' for 20-day periods.
             - kwargs: Additional arguments to pass down to the plotting function.
@@ -524,8 +524,8 @@ class AssetGroupVisualizer(Visualizer):
             - kwargs: Additional keyword arguments to pass down
                       to the plotting function.
         Returns:
-            A matplotlib Axes object.
-        """
+            A matplotlib Axes object.                       
+        """ 
         return sns.boxplot(
             x=self.group_by,
             y=column,
@@ -561,10 +561,9 @@ class AssetGroupVisualizer(Visualizer):
         Returns:
             A matplotlib Axes object.
         """
-        fig, axes = self._get_layout()
-        for ax, (name, data) in zip(axes, self.data.groupby(self.group_by)):
-            sns.distplot(data[column], ax=ax, axlabel=f'{name} - {column}')
-        return axes
+
+        return sns.displot(self.data, x=column, col="name", col_wrap = 3, height=10, aspect = 1, legend=True, kde=True, kind='hist')
+               
 
     def _window_calc_func(self, column, periods, name, func, named_arg, **kwargs):
         """
@@ -658,6 +657,10 @@ class AssetGroupVisualizer(Visualizer):
         )
         if pct_change:
             pivot = pivot.pct_change()
-        return sns.heatmap(pivot.corr(), annot=True, center=0, **kwargs)                       
+        return sns.heatmap(pivot.corr(), annot=True, center=0, **kwargs) 
+
+    def show(self):
+        plt.show()
+                      
             
             
