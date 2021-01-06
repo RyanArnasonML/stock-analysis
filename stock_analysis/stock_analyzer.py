@@ -65,6 +65,32 @@ class StockAnalyzer:
             Return the percent change of the close column.
         """
         return self.close.pct_change()
+    
+    def get52WeekHigh(self):
+        """
+        
+
+        Returns
+        -------
+        Float
+            Returns the hightest price in the last year.
+
+        """
+        return self.data[-252:].close.max()
+    
+    
+    def get52WeekLow(self):
+        """
+        
+
+        Returns
+        -------
+        Float
+            Returns the lowest price in the last year.
+
+        """
+        return self.data[-252:].close.min()
+        
         
     @property
     def pivot_point(self):
