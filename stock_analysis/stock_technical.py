@@ -60,7 +60,26 @@ class Technical:
         
         return ta.OBV(self.data.close,self.data.volume)
     
-    def RelativeStrengthIndex(self, timeperiod):
+    def RelativeStrengthIndex(self, timeperiod=14):
+        """
+        Relative Strength Index
+        
+        Is a momentum indicator, measuring the magnitude of recent price changes.
+        
+        70 is overbought
+        30 is oversold
+
+        Parameters
+        ----------
+        timeperiod : Integer, optional
+            The time period of the moving average. The default is 14.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
         return ta.RSI(self.data.close,timeperiod)
     
     def MovingAverageConvergenceDivergence(self, fastperiod=12, slowperiod=26,signalperiod=9):
