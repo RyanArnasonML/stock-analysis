@@ -7,6 +7,8 @@ Created on Sat Oct 31 19:35:28 2020
 """
 
 import math
+import scipy.stats as scs
+import numpy as np
 from .utils import validate_df
 
 class StockAnalyzer:
@@ -90,7 +92,20 @@ class StockAnalyzer:
 
         """
         return self.data[-252:].close.min()
+    
+    def normalityTests(self):
         
+        # Convert the close price into log valves
+        logReturn = np.log(self.data.close / self.data.close.shift(1))
+        
+        # The shift command will add a NaN to the beginning of the data, this will need to be removed.
+        logReturn = logReturn.dropna()
+        
+        print('Skew of data set  %14.3f' % scs.skew(logReturn))
+        print('Skew test p-value %14.3f' % scs.skewtest(logReturn)[1])
+        print('Kurt of data set  %14.3f' % scs.kurtosis(logReturn))
+        print('Kurt test p-value %14.3f' % scs.kurtosistest(logReturn)[1])
+        print('Norm test p-value %14.3f' % scs.normaltest(logReturn)[1])     
         
     @property
     def pivot_point(self):
