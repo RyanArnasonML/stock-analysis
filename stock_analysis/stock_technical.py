@@ -197,9 +197,7 @@ class Technical:
         cloud['leadingSpanA'] = leadingSpanA
         cloud['leadingSpanB'] = leadingSpanB
         
-        cloud.dropna(inplace=True)
-        
-        print(cloud)
+        cloud.dropna(inplace=True)        
         
         return cloud
     
