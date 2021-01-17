@@ -340,12 +340,44 @@ class StockVisualizer(Visualizer):
         plt.close()
         return fig
     
-    def AverageTrueRange(self, timeframe = 14, figsize=(10, 4)):         
+    def AverageTrueRange(self, timeframe=14, figsize=(10, 4)):         
+        """
+        https://kaabar-sofien.medium.com/the-power-of-the-average-true-range-indicator-in-trading-5de3dcc811a9
+
+        Parameters
+        ----------
+        timeframe : TYPE, optional
+            DESCRIPTION. The default is 14.
+        figsize : TYPE, optional
+            DESCRIPTION. The default is (10, 4).
+
+        Returns
+        -------
+        fig : TYPE
+            DESCRIPTION.
+
+        """
+        
         fig = plt.figure(figsize=figsize)
-        plt.plot(self.technical.AverageTrueRange(timeframe), label='%s-Days' % (timeframe))
+        
+        # Could add a moving average.
+        plt.plot(self.technical.AverageTrueRange(timeframe), label='%s-period' % (timeframe))
         plt.suptitle('Average True Range')
         plt.xlabel('date')
         plt.ylabel('ATR')
+        plt.legend()
+        plt.show()
+        plt.close()
+        return fig
+    
+    def RelativeStrengthIndex(self, timeframe=14, figsize=(10, 4)):         
+        fig = plt.figure(figsize=figsize)
+        plt.plot(self.technical.RelativeStrengthIndex(timeframe), label='%s-period' % (timeframe))
+        plt.suptitle('Relative Strength Index')
+        plt.axhline(y=70, color='r', linestyle='--')
+        plt.axhline(y=50, color='black', linestyle='--')
+        plt.axhline(y=30, color='g', linestyle='--')
+        plt.xlabel('Date')        
         plt.legend()
         plt.show()
         plt.close()
