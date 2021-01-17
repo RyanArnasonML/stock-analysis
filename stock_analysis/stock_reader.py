@@ -93,6 +93,7 @@ class StockReader:
     
     @label_sanitizer
     def get_ticker_data(self, ticker):
+        
         """
         Get historical OHLC data for a given data range and ticker.
         Tries to get from Investor Exchange (IEX), but falls back to Yahoo! Finance if IEX doesn't have it.'
@@ -108,14 +109,15 @@ class StockReader:
 
         """
         
-        try:
-            df = pd.read_csv('../../stock_analysis/data/'+ ticker +'.csv')
-            df['Date'] = pd.to_datetime(df['Date'])    
+#        try:
+        df = pd.read_csv('../stock_analysis/data/'+ ticker +'.csv')
+        df['Date'] = pd.to_datetime(df['Date'])    
                     
-            df = df[df['Date'] > self.start]
-            df = df[df['Date'] < self.end]
+        df = df[df['Date'] > self.start]
+        df = df[df['Date'] < self.end]
         
-            df.set_index('Date', drop=True, inplace=True)
+        df.set_index('Date', drop=True, inplace=True)
+        """       
         except:
             if(False):
                 url = "https://apidojo-yahoo-finance-v1.p.rapidapi.com/stock/v3/get-historical-data"
@@ -156,7 +158,7 @@ class StockReader:
                             df = df.append(priceDict, ignore_index=True)                    
                 
                     df.set_index('date', drop=True, inplace=True)                                                  
-           
+        """    
         return df
         
     @label_sanitizer        
@@ -179,12 +181,12 @@ class StockReader:
         if url:
             df = pd.read_csv(url)
         else:
-            df = pd.read_csv('../../stock_analysis/data/BTC-USD.csv')
+            df = pd.read_csv('../stock_analysis/data/BTC-USD.csv')
         
         df['Date'] = pd.to_datetime(df['Date'])        
         
-        df = df[df['Date'] > self.start]
-        df = df[df['Date'] < self.end]
+        # df = df[df['Date'] > self.start]
+        # df = df[df['Date'] < self.end]
         
         df.set_index('Date', drop=True, inplace=True)
             
