@@ -5,6 +5,11 @@ Created on Sat Oct 31 19:35:28 2020
 
 @author: ryanar
 """
+# Creating a Trading Strategy Using the RSI & the Bollinger Bands
+# https://medium.com/swlh/creating-a-trading-strategy-using-the-rsi-the-bollinger-bands-new-ideas-using-python-4115e1fdfbba
+
+# Combining the Stochastic Oscillator with the Bollinger Bands.
+# https://kaabar-sofien.medium.com/combining-the-stochastic-oscillator-with-the-bollinger-bands-a-simple-yet-profitable-strategy-3b5364801b42
 
 import math
 from .utils import validate_df
