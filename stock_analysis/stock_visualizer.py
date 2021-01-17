@@ -9,6 +9,7 @@ Created on Sat Oct 31 14:15:43 2020
 
 import math
 
+from stock_analysis import Technical
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import mplfinance as mpf
@@ -41,6 +42,7 @@ class Visualizer:
 
         """
         self.data = df
+        self.technical = Technical(df)
         
     @staticmethod
     def add_reference_line(ax, x=None, y=None, **kwargs):
@@ -327,6 +329,65 @@ class StockVisualizer(Visualizer):
         plt.close()
         return fig
     
+    def OnBalanceVolume(self, figsize=(10, 4)):         
+        fig = plt.figure(figsize=figsize)
+        plt.plot(self.technical.OnBalanceVolume())
+        plt.suptitle('On Balance Volume')
+        plt.xlabel('date')
+        plt.ylabel('OBV')
+        plt.legend()
+        plt.show()
+        plt.close()
+        return fig
+    
+    def AverageTrueRange(self, timeframe = 14, figsize=(10, 4)):         
+        fig = plt.figure(figsize=figsize)
+        plt.plot(self.technical.AverageTrueRange(timeframe), label='%s-Days' % (timeframe))
+        plt.suptitle('Average True Range')
+        plt.xlabel('date')
+        plt.ylabel('ATR')
+        plt.legend()
+        plt.show()
+        plt.close()
+        return fig
+    
+    def bollingerbands(self, figsize=(10, 4)):         
+        fig = plt.figure(figsize=figsize)
+        plt.plot(self.technical.BollingerBands())
+        plt.suptitle('Bollinger Bands')
+        plt.xlabel('Date')
+        plt.ylabel('Price')
+        plt.legend()
+        plt.show()
+        plt.close()
+        return fig
+    
+    def MACD(self):         
+        
+        results = self.technical.MovingAverageConvergenceDivergence()
+        
+        # Convert to string, to remove gaps caused by weekend in the datetime. 
+        results.reset_index(inplace=True)
+        results["date"] = results["date"].dt.strftime("%d-%b")
+        
+        
+        fig, ax = plt.subplots(figsize=(10, 4))               
+        ax.bar(results["date"], results['history'])
+        ax.plot(results['signal'], label='signal')
+        ax.plot(results['macd'], label='macd')
+        fig.suptitle('MACD')
+        plt.xlabel('Date')
+        fig.autofmt_xdate()
+        
+        
+        plt.autoscale(True, axis='x', tight=True)
+        
+        plt.ylabel('Price')
+        plt.legend()
+        plt.show()
+        plt.close()
+        #return fig        
+    
     def candle_stick(self, **kwargs):
         """
         Candlestick charts originated in Japan over 100 years before the West developed the bar and point-and-figure charts. In the 1700s, a Japanese man named Homma discovered that, while there was a link between price and the supply and demand of rice, the markets were strongly influenced by the emotions of traders.
@@ -345,6 +406,39 @@ class StockVisualizer(Visualizer):
         """
         oneMonth = self.data[-30:]
         mpf.plot(oneMonth,type='candle',style='yahoo')
+        
+    def IchimokuCloud(self):
+        
+        results = self.technical.IchimokuCloud() 
+        
+        results = results[-90:]
+                
+        fig, ax = plt.subplots(figsize=(10, 4))        
+        
+        plt.plot(results.index.values, results['conversionLine'],'.' ,label='Conversion Line')
+        plt.plot(results.index.values, results['baseLine'], '--', label='Base Line', )
+        
+        plt.fill_between(
+                results.index.values,
+                results['leadingSpanA'],
+                results['leadingSpanB'], color='green',
+                alpha=0.2                
+            )
+        # plt.plot(results.index.values, results['leadingSpanA'], label='leadingSpanA')
+        # plt.plot(results.index.values, results['leadingSpanB'], label='leadingSpanB')
+        # fig.suptitle('Ichimoku Cloud')
+        plt.title('Ichimoku Cloud')
+        plt.ylabel('Price')
+        plt.xlabel('Date')
+        fig.autofmt_xdate()
+        
+        # plt.autoscale(True, axis='x', tight=True)
+        
+        plt.legend()
+        plt.show()
+        plt.close()
+        
+        
         
     def renko(self, **kwargs):
         """
