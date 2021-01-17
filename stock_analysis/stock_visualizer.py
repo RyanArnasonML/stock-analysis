@@ -375,7 +375,7 @@ class StockVisualizer(Visualizer):
         plt.plot(self.technical.RelativeStrengthIndex(timeframe), label='%s-period' % (timeframe))
         plt.suptitle('Relative Strength Index')
         plt.axhline(y=70, color='r', linestyle='--')
-        plt.axhline(y=50, color='black', linestyle='--')
+        plt.axhline(y=50, color='black', linestyle='-.')
         plt.axhline(y=30, color='g', linestyle='--')
         plt.xlabel('Date')        
         plt.legend()
@@ -439,7 +439,7 @@ class StockVisualizer(Visualizer):
         oneMonth = self.data[-30:]
         mpf.plot(oneMonth,type='candle',style='yahoo')
         
-    def IchimokuCloud(self):
+    def IchimokuCloud(self, assetName):
         
         results = self.technical.IchimokuCloud() 
         
@@ -447,19 +447,31 @@ class StockVisualizer(Visualizer):
                 
         fig, ax = plt.subplots(figsize=(10, 4))        
         
-        plt.plot(results.index.values, results['conversionLine'],'.' ,label='Conversion Line')
+        plt.plot(self.data.index.values[-90:], self.data.close[-90:],color='black', label='Close')
+        plt.plot(results.index.values, results['conversionLine'],'--' ,label='Conversion Line')
         plt.plot(results.index.values, results['baseLine'], '--', label='Base Line', )
         
+        green = results.copy()
+        red = results.copy()
+        
+        green = green.query('leadingSpanA > leadingSpanB')
+        red = red.query('leadingSpanA < leadingSpanB')
+        
         plt.fill_between(
-                results.index.values,
-                results['leadingSpanA'],
-                results['leadingSpanB'], color='green',
+                green.index.values,
+                green['leadingSpanA'],
+                green['leadingSpanB'], color='green',
                 alpha=0.2                
             )
-        # plt.plot(results.index.values, results['leadingSpanA'], label='leadingSpanA')
-        # plt.plot(results.index.values, results['leadingSpanB'], label='leadingSpanB')
-        # fig.suptitle('Ichimoku Cloud')
-        plt.title('Ichimoku Cloud')
+        
+        plt.fill_between(
+                red.index.values,
+                red['leadingSpanA'],
+                red['leadingSpanB'], color='red',
+                alpha=0.2                
+            )
+        
+        plt.title('Ichimoku Cloud for %s' % (assetName))
         plt.ylabel('Price')
         plt.xlabel('Date')
         fig.autofmt_xdate()
