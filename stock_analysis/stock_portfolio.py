@@ -142,7 +142,10 @@ class Asset:
         self.visualizer.OnBalanceVolume()
         
     def plotBollingerBands(self):
-        self.visualizer.bollingerbands()   
+        self.visualizer.bollingerbands()  
+        
+    def plotRelativeStrengthIndex(self, timeframe=14):
+        self.visualizer.RelativeStrengthIndex(timeframe)        
         
     def plotMACD(self):
         self.visualizer.MACD()       
@@ -226,6 +229,7 @@ apple = Asset('Apple','AAPL')
 apple.getNormalityTests()
 apple.plotTimeFrame()
 apple.plotAverageTrueRange()
+apple.plotRelativeStrengthIndex()
 # apple.plotRenko() 
 # apple.plotQQPlot()
 # apple.plotTimeFrame()
