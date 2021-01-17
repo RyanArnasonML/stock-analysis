@@ -48,19 +48,15 @@ class Technical:
         self.data = df
         
     def OnBalanceVolume(self):
+        """
         
-        # obv = pd.DataFrame()
-        # yesterdaysClose = self.data[1:].close
-        
-        # for day in self.data[2:].index:
-        #     if (yesterdaysClose < self.data[day].close):
-        #         obv[day] = obv[day-1] + self.data[day].volume
-        #     elif (yesterdaysClose > self.data[day].close):
-        #         obv[day] = obv[day-1] - self.data[day].volume
-        #     else:
-        #         obv[day] = obv[day-1]
-                
-        # yesterdaysClose = self.data[day].close
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
         
         return ta.OBV(self.data.close,self.data.volume)
     
@@ -89,9 +85,9 @@ class Technical:
         
         df = pd.DataFrame()
         
-        df['macd'], df['signal'], df['history'] = ta.MACD(self.data.close, fastperiod, slowperiod, signalperiod)
-               
-        return df
+        df['macd'], df['signal'], df['history'] = ta.MACDFIX(self.data.close, 9)
+                       
+        return df[-30:]
     
     def SimpleMovingAverage(self, timeperiod = 14):
         """
@@ -118,8 +114,10 @@ class Technical:
     def BollingerBands(self, timeperiod = 5, nbdevup = 2, nbdevdn=2, matype=0):
         df = pd.DataFrame()
         
-        df['upperband'], df['upperband'], df['upperband'] = ta.BBANDS(self.data.close, timeperiod, nbdevup, nbdevdn, matype)
-        return df
+        df['close'] = self.data.close
+        
+        df['upper'], df['middle'], df['lower'] = ta.BBANDS(self.data.close, timeperiod, nbdevup, nbdevdn, matype)
+        return df[-180:]
         
     def AverageTrueRange(self, timeperiod = 14):
         atr = []
@@ -150,9 +148,7 @@ class Technical:
                   observation_covariance=1,
                   transition_covariance=.01)
         
-        state_means, _ = kf.filter(self.data.close)
-        
-        #kalman ['Kalman mean'] = state_means
+        state_means, _ = kf.filter(self.data.close)       
         
         return state_means        
     
@@ -180,9 +176,13 @@ class Technical:
         cloud['leadingSpanA'] = leadingSpanA
         cloud['leadingSpanB'] = leadingSpanB
         
+        cloud.dropna(inplace=True)
+        
+        print(cloud)
+        
         return cloud
     
-    def  ParabolicSAR(self, acceleration = 0, maximum = 0):
+    def ParabolicSAR(self, acceleration = 0, maximum = 0):
         
         real = ta.SAR(self.data.high, self.data.low, acceleration, maximum)
         
