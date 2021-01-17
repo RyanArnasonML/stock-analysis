@@ -120,22 +120,24 @@ class Technical:
         return df[-180:]
         
     def AverageTrueRange(self, timeperiod = 14):
-        atr = []
+        """
+        Average True Range
         
-        history = [] # to track a history of prices
+        Is a lagging indicator, used to provide insights into volatility.
+
+        Parameters
+        ----------
+        timeperiod : Integer, optional
+            DESCRIPTION. The default is 14.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
         
-        self.data['price_range'] = self.data.high - self.data.low
-        
-        for price_range in self.data.price_range:
-            
-            history.append(price_range)
-            
-            if len(history) > timeperiod: 
-                del (history[0])       
-        
-            atr.append(np.mean(history))
-        
-        return atr
+        return ta.ATR(self.data.high, self.data.low, self.data.close, timeperiod)
     
     def KalmanAverage(self):
         
