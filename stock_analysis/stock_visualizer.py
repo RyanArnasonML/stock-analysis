@@ -19,6 +19,9 @@ import seaborn as sns
 from scipy import stats
 from scipy.stats import probplot
 
+import scipy.interpolate as sci
+import scipy.optimize as sco
+
 from .utils import validate_df
 
 class Visualizer:
@@ -482,7 +485,19 @@ class StockVisualizer(Visualizer):
         plt.show()
         plt.close()
         
+    def ATRTrainingStops(self,timeframe, figsize=(10, 4)):  
+        fig = plt.figure(figsize=figsize)
         
+        # Could add a moving average.
+        plt.plot(self.data.close, label='Close')
+        plt.plot(self.technical.AverageTrueRangeStopLoss(timeframe), label='%s-period' % (timeframe))
+        plt.suptitle('Average True Range')
+        plt.xlabel('date')
+        plt.ylabel('ATR')
+        plt.legend()
+        plt.show()
+        plt.close()
+        return fig
         
     def renko(self, **kwargs):
         """
@@ -628,8 +643,9 @@ class AssetGroupVisualizer(Visualizer):
     # override for group visuals
     def __init__(self, df, group_by='name'):
         """This object keeps track of which column it needs to group by."""
-        super().__init__(df)
-        self.group_by = group_by
+        # super().__init__(df)
+        # self.group_by = group_by
+        self.tck = 0
 
     def evolution_over_time(self, column, **kwargs):
         """
@@ -795,7 +811,45 @@ class AssetGroupVisualizer(Visualizer):
         )
         if pct_change:
             pivot = pivot.pct_change()
-        return sns.heatmap(pivot.corr(), annot=True, center=0, **kwargs) 
+        return sns.heatmap(pivot.corr(), annot=True, center=0, **kwargs)
+    
+    def f(self, x):
+        ''' Efficient frontier function (splines approximation). '''
+        return sci.splev(x, self.tck, der=0)
+    def df(self, x):
+        ''' First derivative of efficient frontier function. '''
+        return sci.splev(x, self.tck, der=1)
+    
+    def equations(self, p, rf=0.01):
+        eq1 = rf - p[0]  
+        eq2 = rf + p[1] * p[2] - self.f(p[2])  
+        eq3 = p[1] - self.df(p[2])  
+        return eq1, eq2, eq3
+    
+    def portfolioSummary(self, prets, pvols, evols, erets):
+        plt.figure(figsize=(10, 6))
+        
+       
+        plt.scatter(pvols, prets, c=(prets - 0.01) / pvols, marker='.', cmap='coolwarm')
+        
+        #Efficient Frontier
+        plt.plot(evols, erets, 'b', lw=4.0)
+                
+        # Capital Market Line
+        
+        self.tck = sci.splrep(evols, erets)
+        opt = sco.fsolve(self.equations, [0.01, 0.5, 0.15])
+        cx = np.linspace(0.0, 0.35)
+        plt.plot(cx, opt[0] + opt[1] * cx, 'r', lw=1.5)
+        plt.plot(opt[2], self.f(opt[2]), 'y*', markersize=15.0) 
+        
+        # Background of the graph
+        plt.grid(True)
+        plt.axhline(0, color='k', ls='--', lw=2.0)
+        plt.axvline(0, color='k', ls='--', lw=2.0)
+        plt.xlabel('expected volatility')
+        plt.ylabel('expected return')
+        plt.colorbar(label='Sharpe ratio')
 
     def show(self):
         plt.show()

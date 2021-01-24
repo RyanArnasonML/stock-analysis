@@ -12,6 +12,7 @@ from stock_analysis import StockReader, StockVisualizer, Technical, AssetGroupVi
 from stock_analysis.utils import group_stocks, describe_group, make_portfolio
 import numpy as np
 import pandas as pd
+import scipy.optimize as sco
 
 
 class Asset:
@@ -45,7 +46,7 @@ class Asset:
             else:
                 self.data = reader.get_bitcoin_data()
                     
-        
+        self.technical = Technical(self.data)
         self.analyzer = StockAnalyzer(self.data)
         self.visualizer = StockVisualizer(self.data)
     
@@ -61,6 +62,9 @@ class Asset:
     def getData(self):
         return self.data
     
+    def getClose(self):
+        return self.data.close
+    
     def getLogReturn(self):
         
         logReturn = np.log(self.data / self.data.shift(1))
@@ -70,7 +74,7 @@ class Asset:
     def getNormalityTests(self):
         print("Normality Test for {}".format(self.name))
         print(30 * '-')
-        return self.analyzer.normalityTests()        
+        return self.analyzer.normalityTests()      
     
     def getAnnualizedVolatility(self):
         return self.analyzer.annualized_volatility()
@@ -89,6 +93,9 @@ class Asset:
     
     def getQCD(self):
         return self.analyzer.qcd()
+    
+    def getStopLoss(self):
+        return self.technical.AverageTrueRangeStopLoss().iloc[-1]
     
     def plotTimeFrame(self,column='close'):
         
@@ -124,7 +131,7 @@ class Asset:
         self.visualizer.AverageTrueRange()    
 
     def plotIchimokuCloud(self):
-        self.visualizer.IchimokuCloud()           
+        self.visualizer.IchimokuCloud(self.name)           
 
     def plotVolume(self):
         self.visualizer.trade_volume()
@@ -143,6 +150,9 @@ class Asset:
         
     def plotBollingerBands(self):
         self.visualizer.bollingerbands()  
+        
+    def plotATRTrainingStops(self, timeframe=14):
+        self.visualizer.ATRTrainingStops(timeframe)    
         
     def plotRelativeStrengthIndex(self, timeframe=14):
         self.visualizer.RelativeStrengthIndex(timeframe)        
@@ -177,19 +187,61 @@ class Portfolio:
 
         """
         self.holdings = []
+        self.groupVisualizer=AssetGroupVisualizer(self.holdings)
+        self.logMeanReturn = 0
+        self.logAnnualCov = 0
         
     def addAsset(self, name, ticker, assetClass='Stock', data=None):
-        self.holdings.append(Asset(name, ticker,assetClass, data))        
+        self.holdings.append(Asset(name, ticker,assetClass, data)) 
         
-    def getHoldings(self):
-        
+    def numberOfHoldings(self):
+        return len(self.holdings)
+         
+    def getHoldings(self):        
         return self.holdings  
 
-    def listHoldings(self):
-        
+    def listHoldings(self):        
         for holding in self.holdings:            
             print("Name: %s, Ticker: %s, Asset Type: %s, 52 Week Low: %.2f, 52 Week High: %.2f" % (holding.getName(), holding.getTicker(), holding.getAssetClass(), holding.get52WeekLow(), holding.get52WeekHigh()))
-             
+    
+    def _getLogClose(self):
+        
+        df = pd.DataFrame()
+        
+        for holding in self.holdings:
+            df[holding.getName()] = holding.getClose()
+            
+        logReturn = np.log(df / df.shift(1))
+        
+        return logReturn.dropna()       
+    
+    def logReturnMean(self):               
+        rets = self._getLogClose()
+        self.logMeanReturn = rets.mean()
+       
+    
+    def logAnnualVolatility(self):               
+        rets = self._getLogClose()
+        self.logAnnualCov = rets.cov() * 252
+        
+    
+    # def min_func_sharpe(weights):
+    #     return -port_ret(weights) / port_vol(weights)
+    
+    def efficientFrontier(self):
+        cons = ({'type': 'eq', 'fun': lambda x:  np.sum(x) - 1})
+        print(cons)
+        
+        # Set the bounds for the 0-100%
+        bnds = tuple((0, 1) for x in range(self.numberOfHoldings()))
+                
+        # Create a equal weight of all of the holdings
+        equalWeighting = np.array(self.numberOfHoldings() * [1. / self.numberOfHoldings(),])  
+        
+        opts = sco.minimize(min_func_sharpe, equalWeighting, method='SLSQP', bounds=bnds, constraints=cons)
+    
+    # def volatility(self):
+        # return np.sqrt(np.dot(weights.T, np.dot(rets.cov() * 252, weights)))                
             
     def printStatistics(self):
         for holding in self.holdings:
@@ -213,32 +265,94 @@ class Portfolio:
             
         df.set_index('Name', drop=True, inplace=True)    
             
-        return df    
+        return df
+
+    def port_ret(self, weights):
+        return np.sum(self.logMeanReturn * weights) * 252
+
+    def port_vol(self, weights):
+        return np.sqrt(np.dot(weights.T, np.dot(self.logAnnualCov, weights)))    
             
     def plotRenkoForHolding(self,ticker):        
         for holding in self.holdings:
             if (holding.getTicker() == ticker):
-                holding.plotRenko()        
+                holding.plotRenko()
+                
+    def plotSummary(self):
+        self.logReturnMean()
+        self.logAnnualVolatility()
+       
+        
+        # Random Weighting of Holdings
+        
+        prets = []
+        pvols = []
+        
+        for p in range (2500):  
+            weights = np.random.random(self.numberOfHoldings())  
+            weights /= np.sum(weights)
+            prets.append(self.port_ret(weights))
+            pvols.append(self.port_vol(weights))  
+            
+        prets = np.array(prets)
+        pvols = np.array(pvols)
+        
+        # Efficient Frontier
+        #self.efficientFrontier()
+
+
+        tvols = []
+        # This is the y-axis for the efficient frontier
+        trets = np.linspace(0.20, 0.50, 50)
+        
+        bnds = tuple((0, 1) for x in range(self.numberOfHoldings()))
+        
+        cons = ({'type': 'eq', 'fun': lambda x:  self.port_ret(x) - tret}, {'type': 'eq', 'fun': lambda x:  np.sum(x) - 1})
+        
+        equalWeighting = np.array(self.numberOfHoldings() * [1. / self.numberOfHoldings(),])  
+                
+        for tret in trets:
+            res = sco.minimize(self.port_vol, equalWeighting, method='SLSQP', bounds=bnds, constraints=cons)  
+            tvols.append(res['fun'])
+        tvols = np.array(tvols)
+        
+        ind = np.argmin(tvols)  
+        evols = tvols[ind:]  
+        erets = trets[ind:]
+
+        self.groupVisualizer.portfolioSummary(prets, pvols, evols, erets)
+   
+           
 
 # Need to implement Portfolio Optimization        
 # https://github.com/yhilpisch/py4fi2nd/blob/master/code/ch13/13_a_statistics.ipynb
 
+# Constructing a Killer Investment Portfolio with Python
+#https://medium.com/analytics-vidhya/constructing-a-killer-investment-portfolio-with-python-51f4f0d344be
 
+# We could have got 41% from FTSE, here’s how — Python Backtesting #1
+# I like that it had a buy and hold vs. algorithm
+# https://medium.com/analytics-vidhya/backtesting-of-trading-strategy-with-technical-indicator-1-f782b252d873
 
+#https://medium.com/datadriveninvestor/teaching-a-machine-to-trade-3ef31d5918b3
 apple = Asset('Apple','AAPL')
-apple.getNormalityTests()
-apple.plotTimeFrame()
-apple.plotAverageTrueRange()
-apple.plotRelativeStrengthIndex()
+
+#apple.getNormalityTests()
+# apple.plotTimeFrame()
+# apple.plotAverageTrueRange()
+# apple.plotRelativeStrengthIndex()
 # apple.plotRenko() 
 # apple.plotQQPlot()
 # apple.plotTimeFrame()
-#apple.plotMovingAverage()
+# apple.plotMovingAverage()
 # apple.plotOpenToClose()  
-#apple.plotOnBalanceVolume() 
-#apple.plotBollingerBands() 
+# apple.plotOnBalanceVolume() 
+# apple.plotBollingerBands() 
 # apple.plotMACD() 
-# apple.plotIchimokuCloud()    
+# apple.plotIchimokuCloud()  
+# temp=apple.getStopLoss()  
+# apple.plotATRTrainingStops()  
+
 
 # bitcoin = Asset('Bitcoin', 'BTC-USD', assetClass='Crypto')
 # bitcoin.plotMACD() 
@@ -246,15 +360,18 @@ apple.plotRelativeStrengthIndex()
 # bitcoin.plotRenko()     
 
         
-# myPortfolio = Portfolio()
-# myPortfolio.addAsset('Facebook','FB')
-# myPortfolio.addAsset('Apple' ,'AAPL')
-# myPortfolio.addAsset('Amazon','AMZN')
-# myPortfolio.addAsset('Netflix','NFLX')
-# myPortfolio.addAsset('Google','GOOG')
+myPortfolio = Portfolio()
+myPortfolio.addAsset('Facebook','FB')
+myPortfolio.addAsset('Apple' ,'AAPL')
+myPortfolio.addAsset('Amazon','AMZN')
+myPortfolio.addAsset('Netflix','NFLX')
+myPortfolio.addAsset('Google','GOOG')
 
-# myPortfolio.listHoldings()
+myPortfolio.listHoldings()
+print(myPortfolio.numberOfHoldings())
+
 # print(myPortfolio.getStatistics())
 # myPortfolio.printStatistics()
+myPortfolio.plotSummary()
 
 # myPortfolio.plotRenkoForHolding('FB')        

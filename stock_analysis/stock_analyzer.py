@@ -157,7 +157,7 @@ class StockAnalyzer:
 
         """
         return self.data.last('1D').low.iat[0]
-        
+         
     def resistance(self, level=1):
         """
         Calculate the resistance at the given level.

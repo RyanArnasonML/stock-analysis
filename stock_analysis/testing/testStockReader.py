@@ -13,5 +13,7 @@ from stock_analysis.utils import group_stocks, describe_group, make_portfolio
 reader = StockReader('2019-01-01','2020-11-21')
 apple = reader.get_ticker_data('AAPL')
 
+sp500 = reader.get_index_data()
+
 #apple.to_csv('apple.csv', index = False, header=True)
 

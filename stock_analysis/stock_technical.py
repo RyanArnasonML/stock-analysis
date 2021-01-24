@@ -158,6 +158,32 @@ class Technical:
         
         return ta.ATR(self.data.high, self.data.low, self.data.close, timeperiod)
     
+    def AverageTrueRangeStopLoss(self, timeperiod = 14, multiplier = 2):
+        """
+        Average True Range
+        
+        Is a lagging indicator, used to provide insights into volatility.
+
+        Parameters
+        ----------
+        timeperiod : Integer, optional
+            DESCRIPTION. The default is 14.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        stopLoss = ta.ATR(self.data.high, self.data.low, self.data.close, timeperiod)
+                
+        stopLoss =  -multiplier*stopLoss
+        stopLoss = self.data.close + stopLoss   
+
+        stopLoss.dropna(inplace=True)            
+        
+        return stopLoss
+    
     def KalmanAverage(self):
         
         kalman = pd.DataFrame()
