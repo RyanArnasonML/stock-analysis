@@ -15,6 +15,7 @@ import pandas as pd
 import requests
 import json
 import codecs
+import yfinance as yf
 
 
 from stock_analysis.utils import label_sanitizer
@@ -94,6 +95,7 @@ class StockReader:
     @label_sanitizer
     def get_ticker_data(self, ticker):
         
+        
         """
         Get historical OHLC data for a given data range and ticker.
         Tries to get from Investor Exchange (IEX), but falls back to Yahoo! Finance if IEX doesn't have it.'
@@ -110,13 +112,18 @@ class StockReader:
         """
         
 #        try:
-        df = pd.read_csv('../stock_analysis/data/'+ ticker +'.csv')
-        df['Date'] = pd.to_datetime(df['Date'])    
-                    
-        df = df[df['Date'] > self.start]
-        df = df[df['Date'] < self.end]
+        tickerData = yf.Ticker(ticker)
         
-        df.set_index('Date', drop=True, inplace=True)
+        return tickerData.history(period='1d', start='2010-1-1', end='2021-1-25')
+        
+        
+        # df = pd.read_csv('../stock_analysis/data/'+ ticker +'.csv')
+        # df['Date'] = pd.to_datetime(df['Date'])    
+                    
+        # df = df[df['Date'] > self.start]
+        # df = df[df['Date'] < self.end]
+        
+        # df.set_index('Date', drop=True, inplace=True)
         """       
         except:
             if(False):
@@ -158,8 +165,9 @@ class StockReader:
                             df = df.append(priceDict, ignore_index=True)                    
                 
                     df.set_index('date', drop=True, inplace=True)                                                  
-        """    
+           
         return df
+    """ 
         
     @label_sanitizer        
     def get_bitcoin_data(self, url=False):
