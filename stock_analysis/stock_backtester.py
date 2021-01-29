@@ -50,12 +50,12 @@ class BacktestBase(object):
      
     def print_balance(self, bar):
         date, price = self.get_date_price(bar)   
-        print(f'{date}|current amount{self.amount:.2f}')
+        print(f'{date} | current amount {self.amount:.2f}')
         
     def print_net_wealth(self, bar):
         date, price = self.get_date_price(bar)
         net_wealth = self.units * price + self.amount
-        print(f'{date}|current net wealth {net_wealth:.2f}')
+        print(f'{date} | current net wealth ${net_wealth:.2f}')
         
     def place_buy_order(self, bar, units=None, amount=None):
         
@@ -64,12 +64,12 @@ class BacktestBase(object):
         if units is None:
             units = int(amount/price)
             
-        self.amount -=(units * price) * (1   + self.ptc) + self.ftc
+        self.amount -=(units * price) * (1 + self.ptc) + self.ftc
         self.units += units
         self.trades += 1
         
         if self.verbose:
-            print(f'{date}| buying {units} units at {price:.2f}')
+            print(f'{date} | buying {self.units} units @ ${price:.2f}')
             self.print_balance(bar)
             self.print_net_wealth(bar)
             
@@ -85,7 +85,7 @@ class BacktestBase(object):
         self.trades += 1
         
         if self.verbose:
-            print(f'{date}| selling {units} units at {price:.2f}')
+            print(f'{date} | selling {units} units @ ${price:.2f}')
             self.print_balance(bar)
             self.print_net_wealth(bar)
         
@@ -96,7 +96,7 @@ class BacktestBase(object):
         self.trades += 1
         
         if self.verbose:
-            print(f'{date}| inventory {self.units} units at {price:.2f}')
+            print(f'{date} | inventory {self.units} units @ ${price:.2f}')
             print('=' * 55)
             
         print('Final balance [$] {:.2f}'.format(self.amount))    
@@ -107,14 +107,47 @@ class BacktestBase(object):
         print('Trades Executed [#] {:.2f}'.format(self.trades))
         print('=' * 55)
         
+        
+#from BacktestBase import *
+
+class BacktestLongOnly(BacktestBase):
+    def run_sma_strategy(self, SMA1, SMA2):
+        msg = f'\n\nRunning SMA strategy | SMA1 = { SMA1} & SMA2 = {SMA2}'
+        msg += f'\nfixed costs {self.ftc} | '
+        msg += f'proportional costs {self.ptc}'
+        print(msg)
+        print('=' * 55)
+        self.position = 0
+        self.trades = 0
+        self.amount = self.initial_amount
+        self.data['SMA1'] = self.data['price'].rolling(SMA1).mean()
+        self.data['SMA2'] = self.data['price'].rolling(SMA2).mean()
+        
+        for bar in range(SMA2, len(self.data)):
+            if self.position == 0:
+                if self.data['SMA1'].iloc[bar] > self.data['SMA2'].iloc[bar]:
+                    self.place_buy_order(bar, amount=self.amount)
+                    self.position = 1
+            elif self.position == 1:
+                if self.data['SMA1'].iloc[bar] < self.data['SMA2'].iloc[bar]:
+                    self.place_sell_order(bar, units=self.units)
+                    self.position = 0
+        self.close_out(bar)            
+                
 if __name__ == '__main__':
-    bb = BacktestBase('AAPL.O','2010-1-1','2019-12-31',10000)
-    print(bb.data.info())
-    print(bb.data.info())
-    bb.plot_data()
+    
+    def run_strategies():
+        lobt.run_sma_strategy(42,252)
+    
+lobt = BacktestLongOnly('AAPL.O','2010-1-1','2019-12-31',10000)
+run_strategies()
+    
+# print(bb.data.info())
+# print(bb.data.info())
+#     bb.plot_data()                    
         
         
-            
+           
             
             
             
