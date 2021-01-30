@@ -132,12 +132,41 @@ class BacktestLongOnly(BacktestBase):
                 if self.data['SMA1'].iloc[bar] < self.data['SMA2'].iloc[bar]:
                     self.place_sell_order(bar, units=self.units)
                     self.position = 0
-        self.close_out(bar)            
+        self.close_out(bar)
+    
+    def run_momentum_strategy(self, momentum):
+        
+        msg = f'\n\nRunning momentum stratedy | {momentum} days'
+        msg += f'\nfixed costs {self.ftc} |'
+        msg += f'proportional costs {self.ptc}'
+        print(msg)
+        print('=' * 55)
+        
+        self.position = 0
+        self.trades = 0
+        self.amount = self.initial_amount
+        
+        self.data['momentum'] = self.data['return'].rolling(momentum).mean()
+        
+        for bar in range(momentum, len(self.data)):
+            if self.position == 0:
+                if self.data['momentum'].iloc[bar] > 0:
+                    self.place_buy_order(bar, amount=self.amount)
+                    self.position =1
+            elif self.position == 1:
+                if self.data['momentum'].iloc[bar] < 0:
+                    self.place_sell_order(bar, units=self.units)
+                    self.position = 0
+        
+        self.close_out(bar)
+                    
+             
                 
 if __name__ == '__main__':
     
     def run_strategies():
         lobt.run_sma_strategy(42,252)
+        lobt.run_momentum_strategy(60)
     
 lobt = BacktestLongOnly('AAPL.O','2010-1-1','2019-12-31',10000)
 run_strategies()
