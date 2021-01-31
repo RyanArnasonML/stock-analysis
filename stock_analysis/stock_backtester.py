@@ -6,8 +6,6 @@ Created on Sat Oct 31 19:35:28 2020
 @author: ryanar
 """
 
-import math
-import scipy.stats as scs
 import numpy as np
 import pandas as pd
 
@@ -16,16 +14,21 @@ plt.style.use('seaborn')
 mpl.rcParams['font.family'] = 'serif'
 
 class BacktestBase(object):
+
+    #Constants 
+    POSITION_LONG = 1
+    POSITION_NONE = 0
+    POSITION_SHORT = -1
     
-    def __init__(self, symbol, startDate, endDate, amount, ftc=0.0, ptc=0.0, verbose=True):
+    def __init__(self, symbol, startDate, endDate, cash, ftc=0.0, ptc=0.0, verbose=True):
         self.symbol = symbol
-        self.start = startDate
-        self.end = endDate
-        self.initial_amount = amount
-        self.amount = amount
+        self.startDate = startDate
+        self.endDate = endDate
+        self.initial_cash = cash
+        self.cash = cash
         self.ftc = ftc
         self.ptc = ptc
-        self.units = 0
+        self.shares = 0
         self.trades = 0
         self.verbose = verbose
         self.get_data()
@@ -33,7 +36,7 @@ class BacktestBase(object):
     def get_data(self):
         raw = pd.read_csv('http://hilpisch.com/pyalgo_eikon_eod_data.csv', index_col = 0 , parse_dates = True ).dropna() 
         raw = pd.DataFrame(raw[self.symbol])
-        raw = raw.loc[self.start:self.end] 
+        raw = raw.loc[self.startDate:self.endDate] 
         raw.rename (columns = {self.symbol:'price'}, inplace = True)
         raw ['return'] = np.log(raw/raw.shift(1)) 
         self.data = raw.dropna ()
@@ -49,79 +52,73 @@ class BacktestBase(object):
         return date, price
      
     def print_balance(self, bar):
-        date, price = self.get_date_price(bar)   
-        print(f'{date} | current amount ${self.amount:.2f}')
+        date, price = self.get_date_price(bar) 
+        net_wealth = self.shares * price + self.cash  
+        print(f'{date} | Cash: ${self.cash:.2f} Net wealth: ${net_wealth:.2f}')    
         
-    def print_net_wealth(self, bar):
-        date, price = self.get_date_price(bar)
-        net_wealth = self.units * price + self.amount
-        print(f'{date} | current net wealth ${net_wealth:.2f}')
-        
-    def go_long(self, bar, units=None, amount=None):
-        if self.position == -1:
-            self.place_buy_order(bar, units=-self.units)
-        if units:
-            self.place_buy_order(bar, units=units)
-        elif amount:
-            if amount == 'all':
-                amount = self.amount
-            self.place_buy_order(bar, amount=amount)
+    def go_long(self, bar, shares=None, cash=None):
+        if self.position == self.POSITION_SHORT:
+            self.place_buy_order(bar, shares=-self.shares)
+        if shares:
+            self.place_buy_order(bar, shares=shares)
+        elif cash:
+            if cash == 'all':
+                cash = self.cash
+            self.place_buy_order(bar, cash=cash)
             
-    def go_short(self, bar, units=None, amount=None):
-        if self.position == 1:
-            self.place_sell_order(bar, units=self.units)
-        if units:
-            self.place_sell_order(bar, units=units)
-        elif amount:
-            if amount == 'all':
-                amount = self.amount
-            self.place_sell_order(bar, amount=amount)    
+    def go_short(self, bar, shares=None, cash=None):
+        if self.position == self.POSITION_LONG:
+            self.place_sell_order(bar, shares=self.shares)
+        if shares:
+            self.place_sell_order(bar, shares=shares)
+        elif cash:
+            if cash == 'all':
+                cash = self.cash
+            self.place_sell_order(bar, cash=cash)    
         
-    def place_buy_order(self, bar, units=None, amount=None):
+    def place_buy_order(self, bar, shares=None, cash=None):
         
         date, price = self. get_date_price(bar)
         
-        if units is None:
-            units = int(amount/price)
+        if shares is None:
+            shares = int(cash/price)
             
-        self.amount -=(units * price) * (1 + self.ptc) + self.ftc
-        self.units += units
+        self.cash -=(shares * price) * (1 + self.ptc) + self.ftc
+        self.shares += shares
         self.trades += 1
         
         if self.verbose:
-            print(f'{date} | Buying {self.units} units @ ${price:.2f}')
-            self.print_balance(bar)
-            self.print_net_wealth(bar)
+            print(f'{date} | Buying {self.shares} shares @ ${price:.2f}')
+            self.print_balance(bar)            
             
-    def place_sell_order(self, bar, units=None, amount=None):
+    def place_sell_order(self, bar, shares=None, cash=None):
         
         date, price = self.get_date_price(bar)
         
-        if units is None:
-            units = int(amount/price)
+        if shares is None:
+            shares = int(cash/price)
         
-        self.amount += (units * price) * (1 - self.ptc) - self.ftc
-        self.units -= units
+        self.cash += (shares * price) * (1 - self.ptc) - self.ftc
+        self.shares -= shares
         self.trades += 1
         
         if self.verbose:
-            print(f'{date} | Selling {units} units @ ${price:.2f}')
-            self.print_balance(bar)
-            self.print_net_wealth(bar)
+            print(f'{date} | Selling {shares} shares @ ${price:.2f}')
+            self.print_balance(bar)            
         
     def close_out(self, bar):
         date, price = self. get_date_price(bar)
-        self.amount += self.units * price
-        self.units = 0
+        self.cash += self.shares * price
+        self.shares = 0
         self.trades += 1
         
         if self.verbose:
-            print(f'{date} | inventory {self.units} units @ ${price:.2f}')
+            print(f'{date} | inventory {self.shares} shares @ ${price:.2f}')
             print('=' * 55)
             
-        print('Final balance [$] {:.2f}'.format(self.amount))    
+        print('Final balance [$] {:.2f}'.format(self.cash))    
         
-        perf = ((self.amount - self.initial_amount) / self.initial_amount * 100)
+        perf = ((self.cash - self.initial_cash) / self.initial_cash * 100)
         
         print('Net Performance [%] {:.2f}'.format(perf))
         print('Trades Executed [#] {:.2f}'.format(self.trades))
@@ -135,21 +132,31 @@ class BacktestLongOnly(BacktestBase):
         msg += f'proportional costs {self.ptc}'
         print(msg)
         print('=' * 55)
-        self.position = 0
+
+        # Initialize the variables
         self.trades = 0
-        self.amount = self.initial_amount
+        self.cash = self.initial_cash
+        self.position = self.POSITION_NONE
+        
+        # Get the data for the trading strategy   
         self.data['SMA1'] = self.data['price'].rolling(SMA1).mean()
         self.data['SMA2'] = self.data['price'].rolling(SMA2).mean()
         
+        # The logic for the trading strategy
         for bar in range(SMA2, len(self.data)):
-            if self.position == 0:
+            
+            if self.position == self.POSITION_NONE:
+                
                 if self.data['SMA1'].iloc[bar] > self.data['SMA2'].iloc[bar]:
-                    self.place_buy_order(bar, amount=self.amount)
-                    self.position = 1
-            elif self.position == 1:
+                    self.place_buy_order(bar, cash=self.cash)
+                    self.position = self.POSITION_LONG
+
+            elif self.position == self.POSITION_LONG:
+                
                 if self.data['SMA1'].iloc[bar] < self.data['SMA2'].iloc[bar]:
-                    self.place_sell_order(bar, units=self.units)
-                    self.position = 0
+                    self.place_sell_order(bar, shares=self.shares)
+                    self.position = self.POSITION_NONE
+
         self.close_out(bar)
     
     def run_momentum_strategy(self, momentum):
@@ -160,21 +167,28 @@ class BacktestLongOnly(BacktestBase):
         print(msg)
         print('=' * 55)
         
-        self.position = 0
+        # Initialize the variables
         self.trades = 0
-        self.amount = self.initial_amount
+        self.cash = self.initial_cash
+        self.position = self.POSITION_NONE
         
+        # Get the data for the trading strategy 
         self.data['momentum'] = self.data['return'].rolling(momentum).mean()
         
+        # The logic for the trading strategy
         for bar in range(momentum, len(self.data)):
-            if self.position == 0:
+            
+            if self.position == self.POSITION_NONE:
+            
                 if self.data['momentum'].iloc[bar] > 0:
-                    self.place_buy_order(bar, amount=self.amount)
-                    self.position =1
-            elif self.position == 1:
+                    self.place_buy_order(bar, cash=self.cash)
+                    self.position = self.POSITION_LONG
+
+            elif self.position == self.POSITION_LONG:
+
                 if self.data['momentum'].iloc[bar] < 0:
-                    self.place_sell_order(bar, units=self.units)
-                    self.position = 0
+                    self.place_sell_order(bar, shares=self.shares)
+                    self.position = self.POSITION_NONE
         
         self.close_out(bar)
         
@@ -186,22 +200,30 @@ class BacktestLongOnly(BacktestBase):
         msg += f'proportional costs {self.ptc}'
         print(msg)
         print('=' * 55)
-        
-        self.position = 0
+
+        # Initialize the variables
         self.trades = 0
-        self.amount = self.initial_amount
-        
+        self.cash = self.initial_cash
+        self.position = self.POSITION_NONE
+
+        # Get the data for the trading strategy 
         self.data['SMA'] = self.data['price'].rolling(SMA).mean()
         
+        # The logic for the trading strategy
         for bar in range(SMA, len(self.data)):
-            if self.position == 0:
+            
+            if self.position == self.POSITION_NONE:
+
                 if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
-                    self.place_buy_order(bar, amount=self.amount)
-                    self.position = 1
-            elif self.position == 1:
+                    self.place_buy_order(bar, cash=self.cash)
+                    self.position = self.POSITION_LONG
+            
+            elif self.position == self.POSITION_LONG:
+
                 if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
-                    self.place_sell_order(bar, units=self.units)
-                    self.position = 0
+                    self.place_sell_order(bar, shares=self.shares)
+                    self.position = self.POSITION_NONE
+
         self.close_out(bar) 
 
 class BacktestLongShort(BacktestBase):       
@@ -212,21 +234,30 @@ class BacktestLongShort(BacktestBase):
         msg += f'proportional costs {self.ptc}'
         print(msg)
         print('=' * 55)
-        self.position = 0
+
+        # Initialize the variables
         self.trades = 0
-        self.amount = self.initial_amount
+        self.cash = self.initial_cash
+        self.position = self.POSITION_NONE
+
+        # Get the data for the trading strategy 
         self.data['SMA1'] = self.data['price'].rolling(SMA1).mean()
         self.data['SMA2'] = self.data['price'].rolling(SMA2).mean()
         
+        # The logic for the trading strategy
         for bar in range(SMA2, len(self.data)):
-            if self.position in [0, -1]:
+
+            if self.position in [self.POSITION_NONE, self.POSITION_SHORT]:
+
                 if self.data['SMA1'].iloc[bar] > self.data['SMA2'].iloc[bar]:
-                    self.go_long(bar, amount='all')
-                    self.position = 1 # Long position
-            elif self.position in[0, 1]:
+                    self.go_long(bar, cash='all')
+                    self.position = self.POSITION_LONG # Long position
+
+            elif self.position in[self.POSITION_NONE, self.POSITION_LONG]:
+
                 if self.data['SMA1'].iloc[bar] < self.data['SMA2'].iloc[bar]:
-                    self.go_short(bar, amount='all')
-                    self.position = -1 # Short position
+                    self.go_short(bar, cash='all')
+                    self.position = self.POSITION_SHORT # Short position
         
         self.close_out(bar)
     
@@ -237,22 +268,25 @@ class BacktestLongShort(BacktestBase):
         msg += f'proportional costs {self.ptc}'
         print(msg)
         print('=' * 55)
-                
-        self.position = 0
+
+        # Initialize the variables        
         self.trades = 0
-        self.amount = self.initial_amount
-                
+        self.cash = self.initial_cash
+        self.position = self.POSITION_NONE
+
+        # Get the data for the trading strategy         
         self.data['momentum'] = self.data['return'].rolling(momentum).mean()
-        
+
+        # The logic for the trading strategy
         for bar in range(momentum, len(self.data)):
-            if self.position in [0, -1]:
+            if self.position in [0, self.POSITION_SHORT]:
                 if self.data['momentum'].iloc[bar] > 0:
-                    self.go_long(bar, amount='all')
-                    self.position = 1
-            elif self.position in [0, 1]:
+                    self.go_long(bar, cash='all')
+                    self.position = self.POSITION_LONG
+            elif self.position in [0, self.POSITION_LONG]:
                 if self.data['momentum'].iloc[bar] <= 0:
-                    self.go_short(bar, amount='all')
-                    self.position = -1
+                    self.go_short(bar, cash='all')
+                    self.position = self.POSITION_SHORT
         
         self.close_out(bar)
         
@@ -264,29 +298,39 @@ class BacktestLongShort(BacktestBase):
         msg += f'proportional costs {self.ptc}'
         print(msg)
         print('=' * 55)
-        
-        self.position = 0
+
+        # Initialize the variables        
         self.trades = 0
-        self.amount = self.initial_amount
+        self.cash = self.initial_cash
+        self.position = self.POSITION_NONE
         
+        # Get the data for the trading strategy 
         self.data['SMA'] = self.data['price'].rolling(SMA).mean()
         
+        # The logic for the trading strategy
         for bar in range(SMA, len(self.data)):
-            if self.position == 0:
+            
+            if self.position == self.POSITION_NONE:
+                
                 if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
-                    self.go_long(bar, amount=self.initial_amount)
-                    self.position = 1
+                    self.go_long(bar, cash=self.initial_cash)
+                    self.position = self.POSITION_LONG
+
                 elif(self.data['price'].iloc[bar] > self.data['SMA'].iloc[bar] + threshold):
-                    self.go_short(bar, amount=self.initial_amount)
-                    self.position = -1
-            elif self.position == 1:
+                    self.go_short(bar, cash=self.initial_cash)
+                    self.position = self.POSITION_SHORT
+
+            elif self.position == self.POSITION_LONG:
+
                 if self.data['price'].iloc[bar] >= self.data['SMA'].iloc[bar]:
-                    self.place_sell_order(bar, units=self.units)
-                    self.position = 0
-            elif self.position == -1:
+                    self.place_sell_order(bar, shares=self.shares)
+                    self.position = self.POSITION_NONE
+
+            elif self.position == self.POSITION_SHORT:
+
                 if self.data['price'].iloc[bar] <= self.data['SMA'].iloc[bar]:
-                    self.place_buy_order(bar, units=-self.units)
-                    self.position = 0
+                    self.place_buy_order(bar, shares=-self.shares)
+                    self.position = self.POSITION_NONE
        
         self.close_out(bar)                       
                      
@@ -295,15 +339,15 @@ if __name__ == '__main__':
 
     def run_strategies():
         lsbt.run_sma_strategy(42,252)
-        lsbt.run_momentum_strategy(60)
-        lsbt.run_mean_reversion_strategy(50,5)
+        # lsbt.run_momentum_strategy(60)
+        # lsbt.run_mean_reversion_strategy(50,5)
     
-lsbt = BacktestLongShort('AAPL.O','2010-1-1','2019-12-31',10000, verbose=False)
+lsbt = BacktestLongShort('AAPL.O','2010-1-1','2019-12-31',10000, verbose=True)
 run_strategies()
     
 # print(bb.data.info())
 # print(bb.data.info())
-#     bb.plot_data()                    
+lsbt.plot_data()                    
         
         
            
