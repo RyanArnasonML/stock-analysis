@@ -50,12 +50,32 @@ class BacktestBase(object):
      
     def print_balance(self, bar):
         date, price = self.get_date_price(bar)   
-        print(f'{date} | current amount {self.amount:.2f}')
+        print(f'{date} | current amount ${self.amount:.2f}')
         
     def print_net_wealth(self, bar):
         date, price = self.get_date_price(bar)
         net_wealth = self.units * price + self.amount
         print(f'{date} | current net wealth ${net_wealth:.2f}')
+        
+    def go_long(self, bar, units=None, amount=None):
+        if self.position == -1:
+            self.place_buy_order(bar, units=-self.units)
+        if units:
+            self.place_buy_order(bar, units=units)
+        elif amount:
+            if amount == 'all':
+                amount = self.amount
+            self.place_buy_order(bar, amount=amount)
+            
+    def go_short(self, bar, units=None, amount=None):
+        if self.position == 1:
+            self.place_sell_order(bar, units=self.units)
+        if units:
+            self.place_sell_order(bar, units=units)
+        elif amount:
+            if amount == 'all':
+                amount = self.amount
+            self.place_sell_order(bar, amount=amount)    
         
     def place_buy_order(self, bar, units=None, amount=None):
         
@@ -69,7 +89,7 @@ class BacktestBase(object):
         self.trades += 1
         
         if self.verbose:
-            print(f'{date} | buying {self.units} units @ ${price:.2f}')
+            print(f'{date} | Buying {self.units} units @ ${price:.2f}')
             self.print_balance(bar)
             self.print_net_wealth(bar)
             
@@ -85,7 +105,7 @@ class BacktestBase(object):
         self.trades += 1
         
         if self.verbose:
-            print(f'{date} | selling {units} units @ ${price:.2f}')
+            print(f'{date} | Selling {units} units @ ${price:.2f}')
             self.print_balance(bar)
             self.print_net_wealth(bar)
         
@@ -106,9 +126,7 @@ class BacktestBase(object):
         print('Net Performance [%] {:.2f}'.format(perf))
         print('Trades Executed [#] {:.2f}'.format(self.trades))
         print('=' * 55)
-        
-        
-#from BacktestBase import *
+
 
 class BacktestLongOnly(BacktestBase):
     def run_sma_strategy(self, SMA1, SMA2):
@@ -162,7 +180,7 @@ class BacktestLongOnly(BacktestBase):
         
     def run_mean_reversion_strategy(self, SMA, threshold):
         
-        msg = f'\n\nRunning mean reversion strategy | '
+        msg = '\n\nRunning mean reversion strategy | '
         msg += f'SMA = {SMA} & Threshold = {threshold}'
         msg += f'\nfixed costs {self.ftc} | '
         msg += f'proportional costs {self.ptc}'
@@ -184,17 +202,103 @@ class BacktestLongOnly(BacktestBase):
                 if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
                     self.place_sell_order(bar, units=self.units)
                     self.position = 0
-        self.close_out(bar)            
+        self.close_out(bar) 
+
+class BacktestLongShort(BacktestBase):       
+        
+    def run_sma_strategy(self, SMA1, SMA2):
+        msg = f'\n\nRunning SMA strategy | SMA1 = { SMA1} & SMA2 = {SMA2}'
+        msg += f'\nfixed costs {self.ftc} | '
+        msg += f'proportional costs {self.ptc}'
+        print(msg)
+        print('=' * 55)
+        self.position = 0
+        self.trades = 0
+        self.amount = self.initial_amount
+        self.data['SMA1'] = self.data['price'].rolling(SMA1).mean()
+        self.data['SMA2'] = self.data['price'].rolling(SMA2).mean()
+        
+        for bar in range(SMA2, len(self.data)):
+            if self.position in [0, -1]:
+                if self.data['SMA1'].iloc[bar] > self.data['SMA2'].iloc[bar]:
+                    self.go_long(bar, amount='all')
+                    self.position = 1 # Long position
+            elif self.position in[0, 1]:
+                if self.data['SMA1'].iloc[bar] < self.data['SMA2'].iloc[bar]:
+                    self.go_short(bar, amount='all')
+                    self.position = -1 # Short position
+        
+        self.close_out(bar)
+    
+    def run_momentum_strategy(self, momentum):
+        
+        msg = f'\n\nRunning momentum strategy | {momentum} days'
+        msg += f'\nfixed costs {self.ftc} |'
+        msg += f'proportional costs {self.ptc}'
+        print(msg)
+        print('=' * 55)
+                
+        self.position = 0
+        self.trades = 0
+        self.amount = self.initial_amount
+                
+        self.data['momentum'] = self.data['return'].rolling(momentum).mean()
+        
+        for bar in range(momentum, len(self.data)):
+            if self.position in [0, -1]:
+                if self.data['momentum'].iloc[bar] > 0:
+                    self.go_long(bar, amount='all')
+                    self.position = 1
+            elif self.position in [0, 1]:
+                if self.data['momentum'].iloc[bar] <= 0:
+                    self.go_short(bar, amount='all')
+                    self.position = -1
+        
+        self.close_out(bar)
+        
+    def run_mean_reversion_strategy(self, SMA, threshold):
+        
+        msg = '\n\nRunning mean reversion strategy | '
+        msg += f'SMA = {SMA} & Threshold = {threshold}'
+        msg += f'\nfixed costs {self.ftc} | '
+        msg += f'proportional costs {self.ptc}'
+        print(msg)
+        print('=' * 55)
+        
+        self.position = 0
+        self.trades = 0
+        self.amount = self.initial_amount
+        
+        self.data['SMA'] = self.data['price'].rolling(SMA).mean()
+        
+        for bar in range(SMA, len(self.data)):
+            if self.position == 0:
+                if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
+                    self.go_long(bar, amount=self.initial_amount)
+                    self.position = 1
+                elif(self.data['price'].iloc[bar] > self.data['SMA'].iloc[bar] + threshold):
+                    self.go_short(bar, amount=self.initial_amount)
+                    self.position = -1
+            elif self.position == 1:
+                if self.data['price'].iloc[bar] >= self.data['SMA'].iloc[bar]:
+                    self.place_sell_order(bar, units=self.units)
+                    self.position = 0
+            elif self.position == -1:
+                if self.data['price'].iloc[bar] <= self.data['SMA'].iloc[bar]:
+                    self.place_buy_order(bar, units=-self.units)
+                    self.position = 0
+       
+        self.close_out(bar)                       
                      
                 
 if __name__ == '__main__':
-    
+
     def run_strategies():
-        lobt.run_sma_strategy(42,252)
-        lobt.run_momentum_strategy(60)
-        lobt.run_mean_reversion_strategy(50,5)
+        lsbt.run_sma_strategy(42,252)
+        lsbt.run_momentum_strategy(60)
+        lsbt.run_mean_reversion_strategy(50,5)
     
-lobt = BacktestLongOnly('AAPL.O','2010-1-1','2019-12-31',10000)
+lsbt = BacktestLongShort('AAPL.O','2010-1-1','2019-12-31',10000, verbose=False)
 run_strategies()
     
 # print(bb.data.info())
