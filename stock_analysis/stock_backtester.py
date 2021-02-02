@@ -13,6 +13,7 @@ from pylab import mpl , plt
 plt.style.use('seaborn')
 mpl.rcParams['font.family'] = 'serif'
 
+
 class BacktestBase(object):
 
     #Constants 
@@ -31,6 +32,8 @@ class BacktestBase(object):
         self.shares = 0
         self.trades = 0
         self.verbose = verbose
+        self.positions = []
+        self.pnls = []
         self.get_data()
         
     def get_data(self):
@@ -38,13 +41,34 @@ class BacktestBase(object):
         raw = pd.DataFrame(raw[self.symbol])
         raw = raw.loc[self.startDate:self.endDate] 
         raw.rename (columns = {self.symbol:'price'}, inplace = True)
-        raw ['return'] = np.log(raw/raw.shift(1)) 
-        self.data = raw.dropna ()
+        raw['return'] = np.log(raw/raw.shift(1)) 
+        self.data = raw.dropna()
         
-    def plot_data(self, cols=None):
-        if cols is None:
-            cols = ['price']
-        self.data['price'].plot(figsize=(10,6), title = self.symbol)
+    def plot_price(self):
+        self.data['price'].plot(figsize=(10,6), title = self.symbol)  
+        
+    def plot_positions(self):
+        # 
+        date = self.data.index.values[-len(self.positions):]
+        df = pd.DataFrame(data=[date,self.positions]) 
+        df = df.transpose(copy=True)
+        df.rename(columns={0:"Date", 1:"Position"}, inplace=True)
+        df.set_index('Date',drop=True, inplace=True)                
+        df.plot(figsize=(10,6), title = self.symbol)
+        
+    def plot_pnl(self):
+        # 
+        date = self.data.index.values[-len(self.pnls):]
+        df = pd.DataFrame(data=[date,self.pnls]) 
+        df = df.transpose(copy=True)
+        df.rename(columns={0:"Date", 1:"PNL"}, inplace=True)
+        df.set_index('Date',drop=True, inplace=True)                
+        df.plot(figsize=(10,6), title = self.symbol)     
+        
+    def plot_data(self):
+        strategyPlot = self.data.copy()
+        strategyPlot.drop('return', axis=1, inplace=True)
+        strategyPlot.plot(figsize=(10,6), title = self.symbol)       
         
     def get_date_price(self, bar):
         date = str(self.data.index[bar])[:10]
@@ -53,7 +77,7 @@ class BacktestBase(object):
      
     def print_balance(self, bar):
         date, price = self.get_date_price(bar) 
-        net_wealth = self.shares * price + self.cash  
+        net_wealth = self.shares * price + self.cash
         print(f'{date} | Cash: ${self.cash:.2f} Net wealth: ${net_wealth:.2f}')    
         
     def go_long(self, bar, shares=None, cash=None):
@@ -78,7 +102,7 @@ class BacktestBase(object):
         
     def place_buy_order(self, bar, shares=None, cash=None):
         
-        date, price = self. get_date_price(bar)
+        date, price = self.get_date_price(bar)
         
         if shares is None:
             shares = int(cash/price)
@@ -104,13 +128,15 @@ class BacktestBase(object):
         
         if self.verbose:
             print(f'{date} | Selling {shares} shares @ ${price:.2f}')
-            self.print_balance(bar)            
+            self.print_balance(bar)
         
     def close_out(self, bar):
         date, price = self. get_date_price(bar)
         self.cash += self.shares * price
         self.shares = 0
         self.trades += 1
+        self.position = self.POSITION_NONE
+        self.positions.append(self.position) 
         
         if self.verbose:
             print(f'{date} | inventory {self.shares} shares @ ${price:.2f}')
@@ -123,7 +149,7 @@ class BacktestBase(object):
         print('Net Performance [%] {:.2f}'.format(perf))
         print('Trades Executed [#] {:.2f}'.format(self.trades))
         print('=' * 55)
-
+        
 
 class BacktestLongOnly(BacktestBase):
     def run_sma_strategy(self, SMA1, SMA2):
@@ -136,7 +162,9 @@ class BacktestLongOnly(BacktestBase):
         # Initialize the variables
         self.trades = 0
         self.cash = self.initial_cash
+        self.positions = []
         self.position = self.POSITION_NONE
+        self.positions.append(self.position)
         
         # Get the data for the trading strategy   
         self.data['SMA1'] = self.data['price'].rolling(SMA1).mean()
@@ -149,13 +177,20 @@ class BacktestLongOnly(BacktestBase):
                 
                 if self.data['SMA1'].iloc[bar] > self.data['SMA2'].iloc[bar]:
                     self.place_buy_order(bar, cash=self.cash)
-                    self.position = self.POSITION_LONG
+                    self.position = self.POSITION_LONG               
 
             elif self.position == self.POSITION_LONG:
                 
                 if self.data['SMA1'].iloc[bar] < self.data['SMA2'].iloc[bar]:
                     self.place_sell_order(bar, shares=self.shares)
-                    self.position = self.POSITION_NONE
+                    self.position = self.POSITION_NONE                
+            
+            # Track the profit and loss of the stratagy.    
+            date, price = self.get_date_price(bar)
+            self.pnls.append(self.shares * price + self.cash)  
+            
+            # Track if the position in long or short. 
+            self.positions.append(self.position)           
 
         self.close_out(bar)
     
@@ -170,7 +205,9 @@ class BacktestLongOnly(BacktestBase):
         # Initialize the variables
         self.trades = 0
         self.cash = self.initial_cash
+        self.positions = []
         self.position = self.POSITION_NONE
+        self.positions.append(self.position)
         
         # Get the data for the trading strategy 
         self.data['momentum'] = self.data['return'].rolling(momentum).mean()
@@ -189,6 +226,13 @@ class BacktestLongOnly(BacktestBase):
                 if self.data['momentum'].iloc[bar] < 0:
                     self.place_sell_order(bar, shares=self.shares)
                     self.position = self.POSITION_NONE
+            
+            # Track the profit and loss of the stratagy    
+            date, price = self.get_date_price(bar)
+            self.pnls.append(self.shares * price + self.cash)  
+            
+            # Track if the position in long or short. 
+            self.positions.append(self.position)           
         
         self.close_out(bar)
         
@@ -204,7 +248,9 @@ class BacktestLongOnly(BacktestBase):
         # Initialize the variables
         self.trades = 0
         self.cash = self.initial_cash
+        self.positions = []
         self.position = self.POSITION_NONE
+        self.positions.append(self.position)
 
         # Get the data for the trading strategy 
         self.data['SMA'] = self.data['price'].rolling(SMA).mean()
@@ -223,6 +269,13 @@ class BacktestLongOnly(BacktestBase):
                 if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
                     self.place_sell_order(bar, shares=self.shares)
                     self.position = self.POSITION_NONE
+            
+            # Track the profit and loss of the stratagy    
+            date, price = self.get_date_price(bar)
+            self.pnls.append(self.shares * price + self.cash)  
+            
+            # Track if the position in long or short. 
+            self.positions.append(self.position)           
 
         self.close_out(bar) 
 
@@ -238,7 +291,9 @@ class BacktestLongShort(BacktestBase):
         # Initialize the variables
         self.trades = 0
         self.cash = self.initial_cash
+        self.positions = []
         self.position = self.POSITION_NONE
+        self.positions.append(self.position)
 
         # Get the data for the trading strategy 
         self.data['SMA1'] = self.data['price'].rolling(SMA1).mean()
@@ -251,13 +306,20 @@ class BacktestLongShort(BacktestBase):
 
                 if self.data['SMA1'].iloc[bar] > self.data['SMA2'].iloc[bar]:
                     self.go_long(bar, cash='all')
-                    self.position = self.POSITION_LONG # Long position
+                    self.position = self.POSITION_LONG # Long position               
 
             elif self.position in[self.POSITION_NONE, self.POSITION_LONG]:
 
                 if self.data['SMA1'].iloc[bar] < self.data['SMA2'].iloc[bar]:
                     self.go_short(bar, cash='all')
-                    self.position = self.POSITION_SHORT # Short position
+                    self.position = self.POSITION_SHORT # Short position                
+                 
+            # Track the profit and loss of the stratagy    
+            date, price = self.get_date_price(bar)
+            self.pnls.append(self.shares * price + self.cash)      
+                    
+            # Track if the position in long or short. 
+            self.positions.append(self.position)           
         
         self.close_out(bar)
     
@@ -272,7 +334,9 @@ class BacktestLongShort(BacktestBase):
         # Initialize the variables        
         self.trades = 0
         self.cash = self.initial_cash
+        self.positions = []
         self.position = self.POSITION_NONE
+        self.positions.append(self.position)
 
         # Get the data for the trading strategy         
         self.data['momentum'] = self.data['return'].rolling(momentum).mean()
@@ -282,12 +346,20 @@ class BacktestLongShort(BacktestBase):
             if self.position in [0, self.POSITION_SHORT]:
                 if self.data['momentum'].iloc[bar] > 0:
                     self.go_long(bar, cash='all')
-                    self.position = self.POSITION_LONG
+                    self.position = self.POSITION_LONG               
+                 
             elif self.position in [0, self.POSITION_LONG]:
                 if self.data['momentum'].iloc[bar] <= 0:
                     self.go_short(bar, cash='all')
                     self.position = self.POSITION_SHORT
-        
+                
+            # Track the profit and loss of the stratagy    
+            date, price = self.get_date_price(bar)
+            self.pnls.append(self.shares * price + self.cash)  
+            
+            # Track if the position in long or short.        
+            self.positions.append(self.position)   
+            
         self.close_out(bar)
         
     def run_mean_reversion_strategy(self, SMA, threshold):
@@ -302,7 +374,9 @@ class BacktestLongShort(BacktestBase):
         # Initialize the variables        
         self.trades = 0
         self.cash = self.initial_cash
+        self.positions = []
         self.position = self.POSITION_NONE
+        self.positions.append(self.position)
         
         # Get the data for the trading strategy 
         self.data['SMA'] = self.data['price'].rolling(SMA).mean()
@@ -315,22 +389,30 @@ class BacktestLongShort(BacktestBase):
                 if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
                     self.go_long(bar, cash=self.initial_cash)
                     self.position = self.POSITION_LONG
-
+                    
                 elif(self.data['price'].iloc[bar] > self.data['SMA'].iloc[bar] + threshold):
                     self.go_short(bar, cash=self.initial_cash)
-                    self.position = self.POSITION_SHORT
+                    self.position = self.POSITION_SHORT                
 
             elif self.position == self.POSITION_LONG:
 
                 if self.data['price'].iloc[bar] >= self.data['SMA'].iloc[bar]:
                     self.place_sell_order(bar, shares=self.shares)
-                    self.position = self.POSITION_NONE
+                    self.position = self.POSITION_NONE                 
 
             elif self.position == self.POSITION_SHORT:
 
                 if self.data['price'].iloc[bar] <= self.data['SMA'].iloc[bar]:
                     self.place_buy_order(bar, shares=-self.shares)
-                    self.position = self.POSITION_NONE
+                    self.position = self.POSITION_NONE                   
+                    
+                        
+            # Track the profit and loss of the stratagy    
+            date, price = self.get_date_price(bar)
+            self.pnls.append(self.shares * price + self.cash) 
+            
+            # Track if the position in long or short. 
+            self.positions.append(self.position) 
        
         self.close_out(bar)                       
                      
@@ -338,17 +420,19 @@ class BacktestLongShort(BacktestBase):
 if __name__ == '__main__':
 
     def run_strategies():
-        lsbt.run_sma_strategy(42,252)
+        # lsbt.run_sma_strategy(3,8)
+        # lsbt.run_sma_strategy(42,252)
         # lsbt.run_momentum_strategy(60)
-        # lsbt.run_mean_reversion_strategy(50,5)
+        lsbt.run_mean_reversion_strategy(50,5)
     
 lsbt = BacktestLongShort('AAPL.O','2010-1-1','2019-12-31',10000, verbose=True)
 run_strategies()
     
 # print(bb.data.info())
 # print(bb.data.info())
-lsbt.plot_data()                    
-        
+#lsbt.plot_data()                    
+#lsbt.plot_positions() 
+lsbt.plot_pnl()      
         
            
             
