@@ -7,14 +7,14 @@ class TBBacktesterRM(brt.BacktestingBaseRM):
     def _reshape(self, state):
         return np.reshape(state, [1, self.env.lags, self.env.n_features])
 
-    def backtest_strategy(self, sl=None, tsl=None, tp=None, wait=5, guarantee=False):
+    def backtest_strategy(self, stopLoss=None, trailingStopLoss=None, targetPrice=None, wait=5, guarantee=False):
 
-        self.unit = 0
+        self.shares = 0
         self.position = 0
         self.trades = 0
-        self.sl = sl
-        self.tsl = tsl
-        self.tp = tp
+        self.stopLoss = stopLoss
+        self.trailingStopLoss = trailingStopLoss
+        self.targetPrice = targetPrice
         self.wait = 0
         self.current_balance = self.initial_amount
         self.net_wealths = list()
@@ -22,7 +22,7 @@ class TBBacktesterRM(brt.BacktestingBaseRM):
         for bar in range(self.env.lags, len(self.env.data)):
             
             self.wait = max(0, self.wait - 1)
-            data, price = self.get_data_price(bar)
+            date, price = self.get_data_price(bar)
 
             if self.trades == 0:
                 print(50 * '=')
@@ -31,89 +31,90 @@ class TBBacktesterRM(brt.BacktestingBaseRM):
                 print(50 * '=')
 
             #Stop Loss order
-            if sl is not None and self.position != 0:
+            if stopLoss is not None and self.position != 0:
                 
-                rc = (price - self.entry_price) / self.entry_price
+                priceRelationToPurchasePrice = (price - self.entry_price) / self.entry_price
 
-                if self.position == 1 and rc < -self.sl:
+                if self.position == 1 and priceRelationToPurchasePrice < -self.stopLoss:
                     
                     print(50 * '-')
                     
                     if guarantee:
-                        price = self.entry_price * (1 - self.sl)
-                        print(f'*** STOP LOSS (LONG | {-self.sl:.4f}) ***')
+                        price = self.entry_price * (1 - self.stopLoss)
+                        print(f'*** STOP LOSS (LONG | {-self.stopLoss:.4f}) ***')
                     else:
-                        print(f'*** STOP LOSS(LONG | {rc:.4f}) ***')
+                        print(f'*** STOP LOSS(LONG | {priceRelationToPurchasePrice:.4f}) ***')
                     
-                    self.place_sell_order(bar, units=self.units, gprice=price)
+                    self.place_sell_order(bar, shares=self.shares, gprice=price)
                     self.wait = wait
                     self.position = 0
 
-                elif self.position == -1 and rc > self.sl:
+                elif self.position == -1 and priceRelationToPurchasePrice > self.stopLoss:
 
                     print(50 * '-') 
 
                     if guarantee:
-                        price = self.entry_price * (1 + self.sl)
-                        print(f'*** STOP LOSS (SHORT | -{self.sl:.4f} ***')
+                        price = self.entry_price * (1 + self.stopLoss)
+                        print(f'*** STOP LOSS (SHORT | -{self.stopLoss:.4f} ***')
                     else:
-                        print(f'*** STOP LOSS (SHORT | -{rc:.4f}) ***')
+                        print(f'*** STOP LOSS (SHORT | -{priceRelationToPurchasePrice:.4f}) ***')
 
-                    self.place_buy_order(bar, units=-self.units, gprice=price)
+                    self.place_buy_order(bar, shares=-self.shares, gprice=price)
                     self.wait = wait
                     self.position = 0
 
             # Trailing stop loss order
-            if tsl is not None and self.position != 0:
+            if trailingStopLoss is not None and self.position != 0:
+                
                 self.max_price = max(self.max_price, price)
                 self.min_price = min(self.min_price, price)
 
-                rc_1 = (price - self.max_price) / self.entry_price
-                rc_2 = (self.min_price - price) / self.entry_price
+                longRelationToMaxHigh = (price - self.max_price) / self.entry_price
+                shortRelationToMinLow = (self.min_price - price) / self.entry_price
 
-                if self.position == 1 and rc_1 < -self.tsl:
+                if self.position == 1 and longRelationToMaxHigh < -self.trailingStopLoss:
                     print(50 * '-')
-                    print(f'*** TRAILING SL (LONG | {rc_1:.4f}) ***')
-                    self.place_sell_order(bar, units=self.units)
+                    print(f'*** TRAILING stopLoss (LONG | {longRelationToMaxHigh:.4f}) ***')
+                    self.place_sell_order(bar, shares=self.shares)
                     self.wait = wait
                     self.position = 0
-                elif self.position == -1 and rc_2 < -self.tsl:
+                elif self.position == -1 and shortRelationToMinLow < -self.trailingStopLoss:
                     print(50 * '-')
-                    print(f'*** TRAILING SL (SHORT | {rc_2:.4f}) ***')
-                    self.place_buy_order(bar, units=-self.units)
+                    print(f'*** TRAILING stopLoss (SHORT | {shortRelationToMinLow:.4f}) ***')
+                    self.place_buy_order(bar, shares=-self.shares)
                     self.wait = wait
                     self.position = 0
 
             # Take Profit Order
-            if tp is not None and self.position != 0:
+            if targetPrice is not None and self.position != 0:
                 
-                rc = (price - self.entry_price) / self.entry_price
+                priceRelationToPurchasePrice = (price - self.entry_price) / self.entry_price
                 
-                if self.position == 1 and rc > self.tp:
+                if self.position == 1 and priceRelationToPurchasePrice > self.targetPrice:
                 
                     print(50 * '_')
 
                     if guarantee:
-                        price = self.entry_price * (1 + self.tp)
-                        print(f'*** TAKE PROFIT (LONG | {self.tp: .4f}) ***')
+                        price = self.entry_price * (1 + self.targetPrice)
+                        print(f'*** TAKE PROFIT (LONG | {self.targetPrice: .4f}) ***')
                     else:
-                        print(f'*** TAKE PROFIT (LONG | {rc: .4f}) ***')
+                        print(f'*** TAKE PROFIT (LONG | {priceRelationToPurchasePrice: .4f}) ***')
                 
-                    self.place_sell_order(bar, units=self.units, gprice=price)
+                    self.place_sell_order(bar, shares=self.shares, gprice=price)
                     self.wait = wait
                     self.position = 0
 
-                elif self.position == -1 and rc < -self.tp: 
+                elif self.position == -1 and priceRelationToPurchasePrice < -self.targetPrice: 
                     
                     print(50 * '-')
 
                     if guarantee:
-                        price = self.entry_price * (1 - self.tp)
-                        print(f'*** TAKE PROFIT (SHORT | {self.tp: .4f}) ***')
+                        price = self.entry_price * (1 - self.targetPrice)
+                        print(f'*** TAKE PROFIT (SHORT | {self.targetPrice: .4f}) ***')
                     else:
-                        print(f'*** TAKE PROFIT (SHORT | {-rc: .4f}) ***')
+                        print(f'*** TAKE PROFIT (SHORT | {-priceRelationToPurchasePrice: .4f}) ***')
                     
-                    self.place_buy_order(bar, units=-self.units, gprice=price)
+                    self.place_buy_order(bar, shares=-self.shares, gprice=price)
                     self.wait = wait
                     self.position = 0
 
@@ -125,7 +126,7 @@ class TBBacktesterRM(brt.BacktestingBaseRM):
             if self.position in [0, -1] and position == 1 and self.wait == 0:
                 
                 if self.position == -1:
-                    self.place_buy_order(bar - 1, units=-self.units)
+                    self.place_buy_order(bar - 1, shares=-self.shares)
 
                 self.place_buy_order(bar - 1, amount=self.current_balance)
                 self.postion = 1 
@@ -138,7 +139,7 @@ class TBBacktesterRM(brt.BacktestingBaseRM):
             elif self.position in [0, 1] and position == -1 and self.wait == 0:
 
                 if self.position == 1:
-                    self.place_sell_order(bar -1, units = self.units)
+                    self.place_sell_order(bar -1, shares = self.shares)
 
                 self.place_sell_order(bar -1, amount=self.current_balance)
                 self.postion = -1
