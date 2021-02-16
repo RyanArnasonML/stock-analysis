@@ -94,6 +94,9 @@ class Asset:
     def getQCD(self):
         return self.analyzer.qcd()
     
+    def getVHF(self):
+        return self.technical.VerticalHorizontalFilter()
+    
     def getStopLoss(self):
         return self.technical.AverageTrueRangeStopLoss().iloc[-1]
     
@@ -303,7 +306,7 @@ class Portfolio:
 
         tvols = []
         # This is the y-axis for the efficient frontier
-        trets = np.linspace(0.20, 0.50, 50)
+        trets = np.linspace(0.10, 0.40, 50)
         
         bnds = tuple((0, 1) for x in range(self.numberOfHoldings()))
         
@@ -336,8 +339,9 @@ class Portfolio:
 
 #https://medium.com/datadriveninvestor/teaching-a-machine-to-trade-3ef31d5918b3
 apple = Asset('Apple','AAPL')
+vhf = apple.getVHF()
 
-#apple.getNormalityTests()
+# apple.getNormalityTests()
 # apple.plotTimeFrame()
 # apple.plotAverageTrueRange()
 # apple.plotRelativeStrengthIndex()
@@ -360,18 +364,17 @@ apple = Asset('Apple','AAPL')
 # bitcoin.plotRenko()     
 
         
-myPortfolio = Portfolio()
-myPortfolio.addAsset('Facebook','FB')
-myPortfolio.addAsset('Apple' ,'AAPL')
-myPortfolio.addAsset('Amazon','AMZN')
-myPortfolio.addAsset('Netflix','NFLX')
-myPortfolio.addAsset('Google','GOOG')
+# myPortfolio = Portfolio()
+# myPortfolio.addAsset('Facebook','FB')
+# myPortfolio.addAsset('Apple' ,'AAPL')
+# myPortfolio.addAsset('Amazon','AMZN')
+# myPortfolio.addAsset('Netflix','NFLX')
+# myPortfolio.addAsset('Google','GOOG')
 
-myPortfolio.listHoldings()
-print(myPortfolio.numberOfHoldings())
+# myPortfolio.listHoldings()
+# print(myPortfolio.numberOfHoldings())
 
 # print(myPortfolio.getStatistics())
 # myPortfolio.printStatistics()
-myPortfolio.plotSummary()
 
 # myPortfolio.plotRenkoForHolding('FB')        
