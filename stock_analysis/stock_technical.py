@@ -25,6 +25,18 @@ from pykalman import KalmanFilter
 
 from .utils import validate_df
 
+# Another Way to Extract Trading Signals From Moving Average Crosses.
+# https://codeburst.io/a-new-way-to-trade-moving-averages-a-study-in-python-266dbb72b9d0
+
+# Digging deeper and modifying the Bollinger Bands.
+# https://kaabar-sofien.medium.com/the-normalized-bollinger-indicator-another-way-to-trade-the-range-back-testing-in-python-db22c111cdde
+
+# Predicting Stock Market Dips, Crashes and Corrections with Light Gradient Boosting Machines
+# https://peijin.medium.com/predicting-stock-market-dips-crashes-and-corrections-with-light-gradient-boosting-machines-58064f3a193a
+
+# Fusing the RSI with the Stochastic Oscillator. Does It Improve the Trading Results?
+# https://kaabar-sofien.medium.com/fusing-the-rsi-with-the-stochastic-osicllator-does-it-improve-the-trading-results-3c000a5ff588
+
 class Technical:
     """ 
     Base visualizer class not intended for direct use.
@@ -241,5 +253,48 @@ class Technical:
         
         return aroon
     
+    def VerticalHorizontalFilter(self, timeperiod = 28):
+        '''
+        Vertical Horizontal Filter (VHF)
+        
+        The vertical horizontal filter is a measurement of how strong or weak the market
+        is trending.
+        
+        
+        Returns
+        -------
+        None.
+
+        '''
+        
+        # Determine the highest closing price (HCP) in time period.
+        hcp = self.data.close.rolling(timeperiod).max()
+                       
+        #  Determine the lowest closing price (LCP) in time period.
+        lcp = self.data.close.rolling(timeperiod).min()
+        
+        # Calculate the range of closing prices in n periods:  HCP - LCP
+        closingRange = hcp - lcp
+        
+        # Calculate the movement in closing price for each period: Closing price [today] - Closing price [yesterday]
+        # Add up all price movements for time period, disregarding whether they are up or down:
+        change = abs(self.data.close.diff(1))
+        
+        # Sum of absolute values of ( Close [today] - Close [yesterday] ) for time period
+        change = change.rolling(timeperiod).sum()
+                
+        # VHF = (HCP - LCP) / (Sum of absolute values for time period)
+        vhf = closingRange / change       
+    
+        return vhf
+    
     def AroonOscillator(self, timeperiod = 14):
         return ta.AROONOSC(self.data.high,self.data.low, timeperiod=14)
+    
+    def RateOfChange(self, rateOfChange, lookback=1, where=0, what=0):
+        
+        for i in range(len(self.data)):
+            rateOfChange[i, where] = ((rateOfChange[i, what] - rateOfChange[i - lookback, what]) / rateOfChange[i - lookback, what]) * 100
+                                                                                                                
+        return rateOfChange
+        
