@@ -288,6 +288,39 @@ class Technical:
     
         return vhf
     
+    def AverageDirectionalIndex(self, timeperiod = 14):
+        '''
+        Average Direction Movement Index (ADX)
+        
+        ADX is used to determine the stength of a trend.
+        
+        If -DI is above the +DX, down trend
+        If -DI is below the +DX, up trend
+        ADX below 20, price is trendless
+        ADX above 20, price is trending
+
+        Parameters
+        ----------
+        timeperiod : TYPE, optional
+            DESCRIPTION. The default is 14.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        '''
+        
+        dmi = pd.DataFrame()
+        
+        # Need to figure out if it should be PLUS_DM, MINUS_DM, MINUS_DI, PLUS_DI, Directional Movement Index or Average Directional Movement Index
+        
+        dmi['+di'] = ta.PLUS_DM(self.data.high,self.data.low, timeperiod)
+        dmi['-di'] = ta.MINUS_DM(self.data.high,self.data.low, timeperiod)
+        dmi['dmi'] = ta.DX(self.data.high,self.data.low, self.data.close, timeperiod)
+        
+        return dmi
+    
     def AroonOscillator(self, timeperiod = 14):
         return ta.AROONOSC(self.data.high,self.data.low, timeperiod=14)
     

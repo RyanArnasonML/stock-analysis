@@ -97,6 +97,9 @@ class Asset:
     def getVHF(self):
         return self.technical.VerticalHorizontalFilter()
     
+    def getADX(self):
+        return self.technical.AverageDirectionalIndex()
+    
     def getStopLoss(self):
         return self.technical.AverageTrueRangeStopLoss().iloc[-1]
     
@@ -339,7 +342,7 @@ class Portfolio:
 
 #https://medium.com/datadriveninvestor/teaching-a-machine-to-trade-3ef31d5918b3
 apple = Asset('Apple','AAPL')
-vhf = apple.getVHF()
+vhf = apple.getADX()
 
 # apple.getNormalityTests()
 # apple.plotTimeFrame()
