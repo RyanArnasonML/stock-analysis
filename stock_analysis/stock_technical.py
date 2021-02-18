@@ -309,6 +309,16 @@ class Technical:
     
         return vhf
     
+    def Donchian(self, timeperiod = 14):
+        
+        donchian = pd.DataFrame()
+        
+        donchian['upper'] = self.data.high.rolling(timeperiod).max()
+        donchian['lower'] = self.data.low.rolling(timeperiod).min()
+        donchian['middle'] = (donchian['upper'] + donchian['lower']) / 2
+        
+        return donchian
+    
     def AverageDirectionalIndex(self, timeperiod = 14):
         '''
         Average Direction Movement Index (ADX)
