@@ -151,8 +151,8 @@ class Asset:
     def plotQQPlot(self):
         self.visualizer.qqplot()
         
-    def plotOnBalanceVolume(self):
-        self.visualizer.OnBalanceVolume()
+    def plotOnBalanceVolume(self,ewm):
+        self.visualizer.OnBalanceVolume(ewm)
         
     def plotBollingerBands(self):
         self.visualizer.bollingerbands()  
@@ -342,7 +342,7 @@ class Portfolio:
 
 #https://medium.com/datadriveninvestor/teaching-a-machine-to-trade-3ef31d5918b3
 apple = Asset('Apple','AAPL')
-vhf = apple.getADX()
+#vhf = apple.getADX()
 
 # apple.getNormalityTests()
 # apple.plotTimeFrame()
@@ -353,7 +353,7 @@ vhf = apple.getADX()
 # apple.plotTimeFrame()
 # apple.plotMovingAverage()
 # apple.plotOpenToClose()  
-# apple.plotOnBalanceVolume() 
+apple.plotOnBalanceVolume(20) 
 # apple.plotBollingerBands() 
 # apple.plotMACD() 
 # apple.plotIchimokuCloud()  
