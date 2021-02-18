@@ -72,6 +72,21 @@ class Technical:
         
         return ta.OBV(self.data.close,self.data.volume)
     
+    def OBV_EMA(self, timeperiod=20):
+        """        
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        
+        obv = ta.OBV(np.log(self.data.close),np.log(self.data.volume))
+        obv_ema = obv.ewm(com=timeperiod, adjust=True, min_periods=timeperiod).mean()              
+        
+        return (obv-obv_ema)/obv
+    
     def RelativeStrengthIndex(self, timeperiod=14):
         """
         Relative Strength Index
@@ -188,9 +203,15 @@ class Technical:
 
         """
         stopLoss = ta.ATR(self.data.high, self.data.low, self.data.close, timeperiod)
+        
+        plus_dm = ta.PLUS_DM(self.data.high,self.data.low, timeperiod)
+        minus_dm = ta.MINUS_DM(self.data.high,self.data.low, timeperiod)
                 
-        stopLoss =  -multiplier*stopLoss
-        stopLoss = self.data.close + stopLoss   
+        if plus_dm > minus_dm:
+            stopLoss = self.data.close - multiplier * stopLoss
+        else:
+            stopLoss = self.data.close + multiplier * stopLoss
+            
 
         stopLoss.dropna(inplace=True)            
         
