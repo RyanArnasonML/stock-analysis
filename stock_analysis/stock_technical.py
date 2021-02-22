@@ -286,7 +286,24 @@ class Technical:
                 
         return 100 * ((macdClose - fastk) / (fastd - fastk))
     
-    def Vortex(self):
+    def Vortex(self,timeperiod = 14):
+                
+        vortex = pd.DataFrame()
+        
+        vortex['trueRange'] = ta.TRANGE(self.data.high, self.data.low, self.data.close)
+        
+        # Absolute value of current high minus prior low
+        vortex['vm+'] = abs(self.data.high - self.data.low.shift(periods=-1))
+        
+        # Absolute value of current low minus prior high
+        vortex['vm-'] = abs(self.data.low - self.data.high.shift(periods=-1))
+        
+        vortex['vi+'] = vortex['vm+'] / vortex['trueRange']
+        vortex['vi-'] = vortex['vm-'] / vortex['trueRange']
+        
+        vortex['vi+'] = vortex['vi+'].rolling(timeperiod).sum()
+        vortex['vi-'] = vortex['vi-'].rolling(timeperiod).sum()
+        
         return None
     
     def IchimokuCloud(self):
