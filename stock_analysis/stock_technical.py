@@ -242,6 +242,53 @@ class Technical:
         """
         return ta.C
     
+    def Schaff(self, shortPeriod=23, longPeriod=50):
+        """
+        Schaff Trend Cycle (STC)
+        
+        STC indicator is a forward-looking leading indicator combining moving averages (MACD) with oscillator (stochastic).  
+
+        Buy Signal: 25
+        Sell Signal: 75
+        
+        Drawbacks: Lags in indicating exit positions, by staying in overbought or oversold position too long
+
+        Parameters
+        ----------
+        shortPeriod : TYPE, optional
+            This is the time frame for the shorter expotential moving average (EMA). The default is 23.
+        longPeriod : TYPE, optional
+            This is the time frame for the longer expotential moving average (EMA). The default is 50.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+       
+        shortEMAClose = ta.EMA(self.data.close, timeperiod=shortPeriod)
+        longEMAClose = ta.EMA(self.data.close, timeperiod=longPeriod)
+        
+        macdClose = shortEMAClose - longEMAClose
+        
+        shortEMALow = ta.EMA(self.data.low, timeperiod=shortPeriod)
+        longEMALow = ta.EMA(self.data.low, timeperiod=longPeriod)
+        
+        macdLow = shortEMALow - longEMALow
+        
+        shortEMAHigh = ta.EMA(self.data.high, timeperiod=shortPeriod)
+        longEMAHigh = ta.EMA(self.data.high, timeperiod=longPeriod)
+        
+        macdHigh = shortEMAHigh - longEMAHigh
+        
+        fastk, fastd = ta.STOCHF(macdHigh, macdLow, macdClose, fastk_period=10, fastd_period=10, fastd_matype=0)
+                
+        return 100 * ((macdClose - fastk) / (fastd - fastk))
+    
+    def Vortex(self):
+        return None
+    
     def IchimokuCloud(self):
         
         cloud = pd.DataFrame()
