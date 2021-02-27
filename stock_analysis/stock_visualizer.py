@@ -24,6 +24,7 @@ import scipy.optimize as sco
 
 from .utils import validate_df
 
+
 class Visualizer:
     """ 
     Base visualizer class not intended for direct use.
@@ -332,10 +333,15 @@ class StockVisualizer(Visualizer):
         plt.close()
         return fig
     
-    def OnBalanceVolume(self, figsize=(10, 4)):         
+    def OnBalanceVolume(self, ewm=None,figsize=(10, 4)):         
         fig = plt.figure(figsize=figsize)
-        plt.plot(self.technical.OnBalanceVolume())
-        plt.suptitle('On Balance Volume')
+        if ewm is None:
+            plt.plot(self.technical.OnBalanceVolume())
+            plt.suptitle('On Balance Volume')
+        else:
+            plt.plot(self.technical.OBV_EMA(ewm))
+            plt.axhline(y=0, color='black', linestyle='-.')
+            plt.suptitle('On Balance Volume')
         plt.xlabel('date')
         plt.ylabel('OBV')
         plt.legend()
@@ -380,6 +386,18 @@ class StockVisualizer(Visualizer):
         plt.axhline(y=70, color='r', linestyle='--')
         plt.axhline(y=50, color='black', linestyle='-.')
         plt.axhline(y=30, color='g', linestyle='--')
+        plt.xlabel('Date')        
+        plt.legend()
+        plt.show()
+        plt.close()
+        return fig
+    
+    def Schaff(self, timeframe=14, figsize=(10, 4)):                
+        fig = plt.figure(figsize=figsize)
+        plt.plot(self.technical.Schaff())
+        plt.suptitle('Schaff Trend Cycle')        
+        plt.axhline(y=50, color='r', linestyle='--')
+        plt.axhline(y=25, color='g', linestyle='--')
         plt.xlabel('Date')        
         plt.legend()
         plt.show()
