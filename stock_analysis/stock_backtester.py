@@ -565,7 +565,7 @@ class BacktestLongShort(BacktestBase):
             self.positions.append(self.position)           
         
         self.close_out(bar)
-"""      
+     
     def run_momentum_strategy(self, momentum):
         
         msg = f'\n\nRunning momentum strategy | {momentum} days'
@@ -587,7 +587,7 @@ class BacktestLongShort(BacktestBase):
         # The logic for the trading strategy
         for bar in range(momentum, len(self.data)):
 
-            if AllowShorting:
+            if self.allowShorting:
 
                 if self.position in [0, self.POSITION_SHORT]:
                     if self.data['momentum'].iloc[bar] > 0:
@@ -632,7 +632,7 @@ class BacktestLongShort(BacktestBase):
             self.positions.append(self.position)   
             
         self.close_out(bar)
-"""        
+       
     # def run_mean_reversion_strategy(self, SMA, threshold):
         
     #     msg = '\n\nRunning mean reversion strategy | '
@@ -717,9 +717,9 @@ if __name__ == '__main__':
         # lsbt.run_ema_strategy(50,200)
         # lsbt.run_dema_strategy(20,50)
         #lsbt.run_rsi_strategy(14)
-        lsbt.run_macd_strategy(12,26)
+        # lsbt.run_macd_strategy(12,26)
         # lsbt.run_dema_strategy(50,200) 
-        # lsbt.run_momentum_strategy(60)        
+        lsbt.run_momentum_strategy(60)        
         # lsbt.run_mean_reversion_strategy(50,5)
     
 lsbt = BacktestLongShort('AAPL.O','2010-1-1','2019-12-31', 10000,allowShorting=True, verbose=False)
