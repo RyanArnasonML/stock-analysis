@@ -21,7 +21,7 @@ class BacktestBase(object):
     POSITION_NONE = 0
     POSITION_SHORT = -1
     
-    def __init__(self, symbol, startDate, endDate, cash, ftc=0.0, ptc=0.0, verbose=True):
+    def __init__(self, symbol, startDate, endDate, cash, ftc=0.0, ptc=0.0, allowShorting = False, verbose=True):
         self.symbol = symbol
         self.startDate = startDate
         self.endDate = endDate
@@ -32,6 +32,7 @@ class BacktestBase(object):
         self.shares = 0
         self.trades = 0
         self.verbose = verbose
+        self.allowShorting = allowShorting
         self.positions = []
         self.pnls = []
         self.get_data()
@@ -279,12 +280,46 @@ class BacktestLongOnly(BacktestBase):
 
         self.close_out(bar) 
 
-class BacktestLongShort(BacktestBase):       
-        
-    def run_sma_strategy(self, SMA1, SMA2):
-        msg = f'\n\nRunning SMA strategy | SMA1 = { SMA1} & SMA2 = {SMA2}'
+class BacktestLongShort(BacktestBase):
+    
+    def run_buy_hold_strategy(self):
+        msg = '\n\nBuy and Hold strategy'
         msg += f'\nfixed costs {self.ftc} | '
         msg += f'proportional costs {self.ptc}'
+        print(msg)
+        print('=' * 55)
+
+        # Initialize the variables
+        self.trades = 0
+        self.cash = self.initial_cash
+        self.positions = []
+        self.position = self.POSITION_NONE
+        self.positions.append(self.position)
+
+        # Get the data for the trading strategy 
+        self.data['Hold'] = self.data['price'].rolling(1).mean()
+        
+        # The logic for the trading strategy
+        for bar in range(1, len(self.data)):
+
+            if self.position in [self.POSITION_NONE, self.POSITION_SHORT]:
+                self.go_long(bar, cash='all')
+                self.position = self.POSITION_LONG # Long position                        
+                 
+            # Track the profit and loss of the stratagy    
+            date, price = self.get_date_price(bar)
+            self.pnls.append(self.shares * price + self.cash)      
+                    
+            # Track if the position in long or short. 
+            self.positions.append(self.position)           
+        
+        self.close_out(bar)    
+       
+    def run_sma_strategy(self, SMA1, SMA2):
+        msg = f'\n\nRunning SMA strategy | SMA1 = { SMA1} & SMA2 = {SMA2}'
+        msg += f'\nFixed costs: {self.ftc} | '
+        msg += f'Proportional costs: {self.ptc} |'
+        msg += f' Shorting Allowed: {self.allowShorting}'
         print(msg)
         print('=' * 55)
 
@@ -301,16 +336,224 @@ class BacktestLongShort(BacktestBase):
         
         # The logic for the trading strategy
         for bar in range(SMA2, len(self.data)):
+            if self.allowShorting:
+                
+                if self.position in [self.POSITION_NONE, self.POSITION_SHORT]:
+                    
+                    if self.data['SMA1'].iloc[bar] > self.data['SMA2'].iloc[bar]:
+                        self.go_long(bar, cash='all')
+                        self.position = self.POSITION_LONG # Long position               
+
+                elif self.position in[self.POSITION_NONE, self.POSITION_LONG]:
+                    
+                    if self.data['SMA1'].iloc[bar] < self.data['SMA2'].iloc[bar]:
+                        self.go_short(bar, cash='all')
+                        self.position = self.POSITION_SHORT # Short position                
+            
+            else:
+                
+                if self.position == self.POSITION_NONE:
+                
+                    if self.data['SMA1'].iloc[bar] > self.data['SMA2'].iloc[bar]:
+                        self.place_buy_order(bar, cash=self.cash)
+                        self.position = self.POSITION_LONG               
+
+                elif self.position == self.POSITION_LONG:
+                    
+                    if self.data['SMA1'].iloc[bar] < self.data['SMA2'].iloc[bar]:
+                        self.place_sell_order(bar, shares=self.shares)
+                        self.position = self.POSITION_NONE
+                 
+            # Track the profit and loss of the stratagy    
+            date, price = self.get_date_price(bar)
+            self.pnls.append(self.shares * price + self.cash)      
+                    
+            # Track if the position in long or short. 
+            self.positions.append(self.position)           
+        
+        self.close_out(bar)
+        
+    def run_ema_strategy(self, EMA1, EMA2):
+        msg = f'\n\nRunning EMA strategy | EMA1 = { EMA1} & EMA2 = {EMA2}'
+        msg += f'\nFixed costs: {self.ftc} | '
+        msg += f'Proportional costs: {self.ptc}'
+        msg += f' Shorting Allowed: {self.allowShorting}'
+        print(msg)
+        print('=' * 55)
+
+        # Initialize the variables
+        self.trades = 0
+        self.cash = self.initial_cash
+        self.positions = []
+        self.position = self.POSITION_NONE
+        self.positions.append(self.position)
+
+        # Get the data for the trading strategy 
+        self.data['EMA1'] = self.data['price'].ewm(span=EMA1).mean()
+        self.data['EMA2'] = self.data['price'].ewm(span=EMA2).mean()
+        
+        # The logic for the trading strategy
+        for bar in range(EMA2, len(self.data)):
+
+            if self.allowShorting:
+                
+                if self.position in [self.POSITION_NONE, self.POSITION_SHORT]:
+                    
+                    if self.data['EMA1'].iloc[bar] > self.data['EMA2'].iloc[bar]:
+                        self.go_long(bar, cash='all')
+                        self.position = self.POSITION_LONG # Long position               
+
+                elif self.position in[self.POSITION_NONE, self.POSITION_LONG]:
+                    
+                    if self.data['EMA1'].iloc[bar] < self.data['EMA2'].iloc[bar]:
+                        self.go_short(bar, cash='all')
+                        self.position = self.POSITION_SHORT # Short position                
+            
+            else:
+                
+                if self.position == self.POSITION_NONE:
+                
+                    if self.data['EMA1'].iloc[bar] > self.data['EMA2'].iloc[bar]:
+                        self.place_buy_order(bar, cash=self.cash)
+                        self.position = self.POSITION_LONG               
+
+                elif self.position == self.POSITION_LONG:
+                    
+                    if self.data['EMA1'].iloc[bar] < self.data['EMA2'].iloc[bar]:
+                        self.place_sell_order(bar, shares=self.shares)
+                        self.position = self.POSITION_NONE                
+                 
+            # Track the profit and loss of the stratagy    
+            date, price = self.get_date_price(bar)
+            self.pnls.append(self.shares * price + self.cash)      
+                    
+            # Track if the position in long or short. 
+            self.positions.append(self.position)           
+        
+        self.close_out(bar) 
+"""         
+    def run_dema_strategy(self, DEMA1, DEMA2):
+        msg = f'\n\nRunning DEMA strategy | DEMA1 = {DEMA1} & DEMA2 = {DEMA2}'
+        msg += f'\nfixed costs {self.ftc} | '
+        msg += f'proportional costs {self.ptc}'
+        print(msg)
+        print('=' * 55)
+
+        # Initialize the variables
+        self.trades = 0
+        self.cash = self.initial_cash
+        self.positions = []
+        self.position = self.POSITION_NONE
+        self.positions.append(self.position)
+
+        # Get the data for the trading strategy 
+        self.data['DEMA1'] = 2 * self.data['price'].ewm(span=DEMA1).mean() - self.data['price'].ewm(span=DEMA1).mean()
+        self.data['DEMA2'] = 2 * self.data['price'].ewm(span=DEMA2).mean() - self.data['price'].ewm(span=DEMA2).mean()
+        
+        # The logic for the trading strategy
+        for bar in range(DEMA2, len(self.data)):
 
             if self.position in [self.POSITION_NONE, self.POSITION_SHORT]:
 
-                if self.data['SMA1'].iloc[bar] > self.data['SMA2'].iloc[bar]:
+                if self.data['DEMA1'].iloc[bar] > self.data['DEMA2'].iloc[bar]:
                     self.go_long(bar, cash='all')
                     self.position = self.POSITION_LONG # Long position               
 
             elif self.position in[self.POSITION_NONE, self.POSITION_LONG]:
 
-                if self.data['SMA1'].iloc[bar] < self.data['SMA2'].iloc[bar]:
+                if self.data['DEMA1'].iloc[bar] < self.data['DEMA2'].iloc[bar]:
+                    self.go_short(bar, cash='all')
+                    self.position = self.POSITION_SHORT # Short position                
+                 
+            # Track the profit and loss of the stratagy    
+            date, price = self.get_date_price(bar)
+            self.pnls.append(self.shares * price + self.cash)      
+                    
+            # Track if the position in long or short. 
+            self.positions.append(self.position)           
+        
+        self.close_out(bar)
+        
+    def run_rsi_strategy(self, RSI,):
+        msg = f'\n\nRunning Relative Strength Index strategy | RSI = {RSI}'
+        msg += f'\nfixed costs {self.ftc} | '
+        msg += f'proportional costs {self.ptc}'
+        print(msg)
+        print('=' * 55)
+
+        # Initialize the variables
+        self.trades = 0
+        self.cash = self.initial_cash
+        self.positions = []
+        self.position = self.POSITION_NONE
+        self.positions.append(self.position)
+
+        # Get the data for the trading strategy 
+        self.data['EMA1'] = self.data['price'].ewm(span=EMA1).mean()
+        self.data['EMA2'] = self.data['price'].ewm(span=EMA2).mean()
+        
+        # The logic for the trading strategy
+        for bar in range(EMA2, len(self.data)):
+
+            if self.position in [self.POSITION_NONE, self.POSITION_SHORT]:
+
+                if self.data['EMA1'].iloc[bar] > self.data['EMA2'].iloc[bar]:
+                    self.go_long(bar, cash='all')
+                    self.position = self.POSITION_LONG # Long position               
+
+            elif self.position in[self.POSITION_NONE, self.POSITION_LONG]:
+
+                if self.data['EMA1'].iloc[bar] < self.data['EMA2'].iloc[bar]:
+                    self.go_short(bar, cash='all')
+                    self.position = self.POSITION_SHORT # Short position                
+                 
+            # Track the profit and loss of the stratagy    
+            date, price = self.get_date_price(bar)
+            self.pnls.append(self.shares * price + self.cash)      
+                    
+            # Track if the position in long or short. 
+            self.positions.append(self.position)           
+        
+        self.close_out(bar)     
+        
+    def run_macd_strategy(self, MACD1, MACD2):
+        msg = f'\n\nRunning MACD strategy | MACD1 = {MACD1} & MACD2 = {MACD2}'
+        msg += f'\nfixed costs {self.ftc} | '
+        msg += f'proportional costs {self.ptc}'
+        print(msg)
+        print('=' * 55)
+
+        # Initialize the variables
+        self.trades = 0
+        self.cash = self.initial_cash
+        self.positions = []
+        self.position = self.POSITION_NONE
+        self.positions.append(self.position)
+
+        # Get the data for the trading strategy 
+        self.data['ShortEMA'] = self.data['price'].ewm(span=MACD1).mean()
+        self.data['LongEMA'] = self.data['price'].ewm(span=MACD2).mean()
+        
+        self.data['MACD'] = self.data['ShortEMA'] - self.data['LongEMA']
+        
+        # Calcualte the signal line
+        self.data['signal'] = self.data['MACD'].ewm(span=9, adjust=False).mean()
+        
+        plt.plot(self.data.index[-365:], self.data['MACD'][-365:])
+        plt.plot(self.data.index[-365:], self.data['signal'][-365:])
+        
+        # The logic for the trading strategy
+        for bar in range(1, len(self.data)):
+
+            if self.position in [self.POSITION_NONE, self.POSITION_SHORT]:
+
+                if self.data['signal'].iloc[bar] < self.data['MACD'].iloc[bar]:
+                    self.go_long(bar, cash='all')
+                    self.position = self.POSITION_LONG # Long position               
+
+            elif self.position in[self.POSITION_NONE, self.POSITION_LONG]:
+
+                if self.data['signal'].iloc[bar] > self.data['MACD'].iloc[bar]:
                     self.go_short(bar, cash='all')
                     self.position = self.POSITION_SHORT # Short position                
                  
@@ -343,15 +586,43 @@ class BacktestLongShort(BacktestBase):
 
         # The logic for the trading strategy
         for bar in range(momentum, len(self.data)):
-            if self.position in [0, self.POSITION_SHORT]:
-                if self.data['momentum'].iloc[bar] > 0:
-                    self.go_long(bar, cash='all')
-                    self.position = self.POSITION_LONG               
+
+            if AllowShorting:
+
+                if self.position in [0, self.POSITION_SHORT]:
+                    if self.data['momentum'].iloc[bar] > 0:
+                        self.go_long(bar, cash='all')
+                        self.position = self.POSITION_LONG               
                  
-            elif self.position in [0, self.POSITION_LONG]:
-                if self.data['momentum'].iloc[bar] <= 0:
-                    self.go_short(bar, cash='all')
-                    self.position = self.POSITION_SHORT
+                elif self.position in [0, self.POSITION_LONG]:
+                    if self.data['momentum'].iloc[bar] <= 0:
+                        self.go_short(bar, cash='all')
+                        self.position = self.POSITION_SHORT
+                    
+                if self.position == self.POSITION_NONE:
+                    if self.data['momentum'].iloc[bar] > 0:
+                        self.place_buy_order(bar, cash=self.cash)
+                        self.position = self.POSITION_LONG
+
+                elif self.position == self.POSITION_LONG:
+                    if self.data['momentum'].iloc[bar] < 0:
+                        self.place_sell_order(bar, shares=self.shares)
+                        self.position = self.POSITION_NONE
+
+            else:
+                
+                if self.position == self.POSITION_NONE:
+
+                    if self.data['momentum'].iloc[bar] > 0:
+                        self.place_buy_order(bar, cash=self.cash)
+                        self.position = self.POSITION_LONG
+
+                elif self.position == self.POSITION_LONG:
+
+                    if self.data['momentum'].iloc[bar] < 0:
+                        self.place_sell_order(bar, shares=self.shares)
+                        self.position = self.POSITION_NONE        
+                    
                 
             # Track the profit and loss of the stratagy    
             date, price = self.get_date_price(bar)
@@ -361,7 +632,7 @@ class BacktestLongShort(BacktestBase):
             self.positions.append(self.position)   
             
         self.close_out(bar)
-        
+       
     def run_mean_reversion_strategy(self, SMA, threshold):
         
         msg = '\n\nRunning mean reversion strategy | '
@@ -383,29 +654,46 @@ class BacktestLongShort(BacktestBase):
         
         # The logic for the trading strategy
         for bar in range(SMA, len(self.data)):
-            
-            if self.position == self.POSITION_NONE:
+
+            if AllowShorting:
+
+                if self.position == self.POSITION_NONE:
                 
-                if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
-                    self.go_long(bar, cash=self.initial_cash)
-                    self.position = self.POSITION_LONG
                     
-                elif(self.data['price'].iloc[bar] > self.data['SMA'].iloc[bar] + threshold):
-                    self.go_short(bar, cash=self.initial_cash)
-                    self.position = self.POSITION_SHORT                
-
-            elif self.position == self.POSITION_LONG:
-
-                if self.data['price'].iloc[bar] >= self.data['SMA'].iloc[bar]:
-                    self.place_sell_order(bar, shares=self.shares)
-                    self.position = self.POSITION_NONE                 
-
-            elif self.position == self.POSITION_SHORT:
-
-                if self.data['price'].iloc[bar] <= self.data['SMA'].iloc[bar]:
-                    self.place_buy_order(bar, shares=-self.shares)
-                    self.position = self.POSITION_NONE                   
+                    if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
+                        self.go_long(bar, cash=self.initial_cash)
+                        self.position = self.POSITION_LONG
                     
+                    elif(self.data['price'].iloc[bar] > self.data['SMA'].iloc[bar] + threshold):
+                        self.go_short(bar, cash=self.initial_cash)
+                        self.position = self.POSITION_SHORT                
+
+                elif self.position == self.POSITION_LONG:
+
+                    if self.data['price'].iloc[bar] >= self.data['SMA'].iloc[bar]:
+                        self.place_sell_order(bar, shares=self.shares)
+                        self.position = self.POSITION_NONE                 
+
+                elif self.position == self.POSITION_SHORT:
+
+                    if self.data['price'].iloc[bar] <= self.data['SMA'].iloc[bar]:
+                        self.place_buy_order(bar, shares=-self.shares)
+                        self.position = self.POSITION_NONE
+
+            else:
+
+                if self.position == self.POSITION_NONE:
+
+                    if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
+                        self.place_buy_order(bar, cash=self.cash)
+                        self.position = self.POSITION_LONG
+            
+                elif self.position == self.POSITION_LONG:
+
+                    if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
+                        self.place_sell_order(bar, shares=self.shares)
+                        self.position = self.POSITION_NONE
+                   
                         
             # Track the profit and loss of the stratagy    
             date, price = self.get_date_price(bar)
@@ -415,23 +703,31 @@ class BacktestLongShort(BacktestBase):
             self.positions.append(self.position) 
        
         self.close_out(bar)                       
-                     
+"""                     
                 
 if __name__ == '__main__':
 
     def run_strategies():
-        # lsbt.run_sma_strategy(3,8)
-        # lsbt.run_sma_strategy(42,252)
-        # lsbt.run_momentum_strategy(60)
-        lsbt.run_mean_reversion_strategy(50,5)
+        lsbt.run_buy_hold_strategy()
+        #lsbt.run_sma_strategy(10,50)
+        #lsbt.run_sma_strategy(20,50)
+        #lsbt.run_sma_strategy(50,200)
+        #lsbt.run_sma_strategy(42,252)
+        # lsbt.run_ema_strategy(12,26)
+        # lsbt.run_ema_strategy(50,200)
+        # lsbt.run_dema_strategy(20,50)
+        # lsbt.run_macd_strategy(12,26)
+        # lsbt.run_dema_strategy(50,200) 
+        #lsbt.run_momentum_strategy(60)        
+        #lsbt.run_mean_reversion_strategy(50,5)
     
-lsbt = BacktestLongShort('AAPL.O','2010-1-1','2019-12-31',10000, verbose=True)
+lsbt = BacktestLongShort('AAPL.O','2010-1-1','2019-12-31', 10000,allowShorting=True, verbose=True)
 run_strategies()
     
 # print(bb.data.info())
 # print(bb.data.info())
-#lsbt.plot_data()                    
-#lsbt.plot_positions() 
+lsbt.plot_data()                    
+lsbt.plot_positions() 
 lsbt.plot_pnl()      
         
            
