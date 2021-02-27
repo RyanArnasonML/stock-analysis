@@ -633,76 +633,76 @@ class BacktestLongShort(BacktestBase):
             
         self.close_out(bar)
        
-    # def run_mean_reversion_strategy(self, SMA, threshold):
+    def run_mean_reversion_strategy(self, SMA, threshold):
         
-    #     msg = '\n\nRunning mean reversion strategy | '
-    #     msg += f'SMA = {SMA} & Threshold = {threshold}'
-    #     msg += f'\nfixed costs {self.ftc} | '
-    #     msg += f'proportional costs {self.ptc}'
-    #     print(msg)
-    #     print('=' * 55)
+        msg = '\n\nRunning mean reversion strategy | '
+        msg += f'SMA = {SMA} & Threshold = {threshold}'
+        msg += f'\nfixed costs {self.ftc} | '
+        msg += f'proportional costs {self.ptc}'
+        print(msg)
+        print('=' * 55)
 
-    #     # Initialize the variables        
-    #     self.trades = 0
-    #     self.cash = self.initial_cash
-    #     self.positions = []
-    #     self.position = self.POSITION_NONE
-    #     self.positions.append(self.position)
+        # Initialize the variables        
+        self.trades = 0
+        self.cash = self.initial_cash
+        self.positions = []
+        self.position = self.POSITION_NONE
+        self.positions.append(self.position)
         
-    #     # Get the data for the trading strategy 
-    #     self.data['SMA'] = self.data['price'].rolling(SMA).mean()
+        # Get the data for the trading strategy 
+        self.data['SMA'] = self.data['price'].rolling(SMA).mean()
         
-    #     # The logic for the trading strategy
-    #     for bar in range(SMA, len(self.data)):
+        # The logic for the trading strategy
+        for bar in range(SMA, len(self.data)):
 
-    #         if AllowShorting:
+            if self.allowShorting:
 
-    #             if self.position == self.POSITION_NONE:
+                if self.position == self.POSITION_NONE:
                 
                     
-    #                 if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
-    #                     self.go_long(bar, cash=self.initial_cash)
-    #                     self.position = self.POSITION_LONG
+                    if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
+                        self.go_long(bar, cash=self.initial_cash)
+                        self.position = self.POSITION_LONG
                     
-    #                 elif(self.data['price'].iloc[bar] > self.data['SMA'].iloc[bar] + threshold):
-    #                     self.go_short(bar, cash=self.initial_cash)
-    #                     self.position = self.POSITION_SHORT                
+                    elif(self.data['price'].iloc[bar] > self.data['SMA'].iloc[bar] + threshold):
+                        self.go_short(bar, cash=self.initial_cash)
+                        self.position = self.POSITION_SHORT                
 
-    #             elif self.position == self.POSITION_LONG:
+                elif self.position == self.POSITION_LONG:
 
-    #                 if self.data['price'].iloc[bar] >= self.data['SMA'].iloc[bar]:
-    #                     self.place_sell_order(bar, shares=self.shares)
-    #                     self.position = self.POSITION_NONE                 
+                    if self.data['price'].iloc[bar] >= self.data['SMA'].iloc[bar]:
+                        self.place_sell_order(bar, shares=self.shares)
+                        self.position = self.POSITION_NONE                 
 
-    #             elif self.position == self.POSITION_SHORT:
+                elif self.position == self.POSITION_SHORT:
 
-    #                 if self.data['price'].iloc[bar] <= self.data['SMA'].iloc[bar]:
-    #                     self.place_buy_order(bar, shares=-self.shares)
-    #                     self.position = self.POSITION_NONE
+                    if self.data['price'].iloc[bar] <= self.data['SMA'].iloc[bar]:
+                        self.place_buy_order(bar, shares=-self.shares)
+                        self.position = self.POSITION_NONE
 
-    #         else:
+            else:
 
-    #             if self.position == self.POSITION_NONE:
+                if self.position == self.POSITION_NONE:
 
-    #                 if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
-    #                     self.place_buy_order(bar, cash=self.cash)
-    #                     self.position = self.POSITION_LONG
+                    if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
+                        self.place_buy_order(bar, cash=self.cash)
+                        self.position = self.POSITION_LONG
             
-    #             elif self.position == self.POSITION_LONG:
+                elif self.position == self.POSITION_LONG:
 
-    #                 if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
-    #                     self.place_sell_order(bar, shares=self.shares)
-    #                     self.position = self.POSITION_NONE
+                    if(self.data['price'].iloc[bar] < self.data['SMA'].iloc[bar] - threshold):
+                        self.place_sell_order(bar, shares=self.shares)
+                        self.position = self.POSITION_NONE
                    
                         
-    #         # Track the profit and loss of the stratagy    
-    #         date, price = self.get_date_price(bar)
-    #         self.pnls.append(self.shares * price + self.cash) 
+            # Track the profit and loss of the stratagy    
+            date, price = self.get_date_price(bar)
+            self.pnls.append(self.shares * price + self.cash) 
             
-    #         # Track if the position in long or short. 
-    #         self.positions.append(self.position) 
+            # Track if the position in long or short. 
+            self.positions.append(self.position) 
        
-    #     self.close_out(bar)                       
+        self.close_out(bar)                       
                     
                 
 if __name__ == '__main__':
@@ -720,7 +720,7 @@ if __name__ == '__main__':
         # lsbt.run_macd_strategy(12,26)
         # lsbt.run_dema_strategy(50,200) 
         lsbt.run_momentum_strategy(60)        
-        # lsbt.run_mean_reversion_strategy(50,5)
+        lsbt.run_mean_reversion_strategy(50,5)
     
 lsbt = BacktestLongShort('AAPL.O','2010-1-1','2019-12-31', 10000,allowShorting=True, verbose=False)
 run_strategies()
