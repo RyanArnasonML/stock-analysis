@@ -515,7 +515,7 @@ class BacktestLongShort(BacktestBase):
             self.positions.append(self.position)           
         
         self.close_out(bar)     
-"""          
+        
     def run_macd_strategy(self, MACD1, MACD2):
         msg = f'\n\nRunning MACD strategy | MACD1 = {MACD1} & MACD2 = {MACD2}'
         msg += f'\nfixed costs {self.ftc} | '
@@ -565,7 +565,7 @@ class BacktestLongShort(BacktestBase):
             self.positions.append(self.position)           
         
         self.close_out(bar)
-    
+"""      
     def run_momentum_strategy(self, momentum):
         
         msg = f'\n\nRunning momentum strategy | {momentum} days'
@@ -716,8 +716,8 @@ if __name__ == '__main__':
         # lsbt.run_ema_strategy(12,26)
         # lsbt.run_ema_strategy(50,200)
         # lsbt.run_dema_strategy(20,50)
-        lsbt.run_rsi_strategy(14)
-        # lsbt.run_macd_strategy(12,26)
+        #lsbt.run_rsi_strategy(14)
+        lsbt.run_macd_strategy(12,26)
         # lsbt.run_dema_strategy(50,200) 
         # lsbt.run_momentum_strategy(60)        
         # lsbt.run_mean_reversion_strategy(50,5)
