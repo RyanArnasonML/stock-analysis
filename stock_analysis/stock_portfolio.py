@@ -39,7 +39,7 @@ class Asset:
         if(data):
             self.data = data()
         else:
-            reader = StockReader('2019-01-01','2020-11-21')
+            reader = StockReader('2010/01/01','2021/01/01')
             
             if(assetClass=='Stock'):
                 self.data = reader.get_ticker_data(self.ticker)
@@ -89,8 +89,8 @@ class Asset:
         return self.analyzer.cumulative_returns()
     
     def getCV(self):
-        return self.analyzer.cv()
-    
+        return self.analyzer.cv()    
+        
     def getQCD(self):
         return self.analyzer.qcd()
     
@@ -137,7 +137,10 @@ class Asset:
         self.visualizer.AverageTrueRange()    
 
     def plotIchimokuCloud(self):
-        self.visualizer.IchimokuCloud(self.name)           
+        self.visualizer.IchimokuCloud(self.name)  
+
+    def plotSTC(self):
+        self.visualizer.Schaff()         
 
     def plotVolume(self):
         self.visualizer.trade_volume()
@@ -161,7 +164,16 @@ class Asset:
         self.visualizer.ATRTrainingStops(timeframe)    
         
     def plotRelativeStrengthIndex(self, timeframe=14):
-        self.visualizer.RelativeStrengthIndex(timeframe)        
+        self.visualizer.RelativeStrengthIndex(timeframe)
+
+    def plotMonthlyReturn(self):
+       percentChange = (self.data.close - self.data.close.shift(1)) / self.data.close
+       percentChange = percentChange * 100
+       monthlyPercentChange = percentChange.groupby([percentChange.index.year.rename('Year'), percentChange.index.month.rename('Month')]).sum()
+       
+       self.visualizer.monthlyReturnsBoxplot(monthlyPercentChange, self.name)
+       
+       #return monthlyPercentChange         
         
     def plotMACD(self):
         self.visualizer.MACD()       
@@ -353,12 +365,14 @@ apple = Asset('Apple','AAPL')
 # apple.plotTimeFrame()
 # apple.plotMovingAverage()
 # apple.plotOpenToClose()  
-apple.plotOnBalanceVolume(20) 
+# apple.plotOnBalanceVolume(20) 
+# apple.plotSTC()
 # apple.plotBollingerBands() 
 # apple.plotMACD() 
 # apple.plotIchimokuCloud()  
 # temp=apple.getStopLoss()  
 # apple.plotATRTrainingStops()  
+test = apple.plotMonthlyReturn()
 
 
 # bitcoin = Asset('Bitcoin', 'BTC-USD', assetClass='Crypto')

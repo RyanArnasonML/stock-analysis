@@ -415,6 +415,23 @@ class StockVisualizer(Visualizer):
         plt.close()
         return fig
     
+    def monthlyReturnsBoxplot(self, monthlyReturn, name, figsize=(10, 10)):         
+        #fig = plt.figure(figsize=figsize)
+       
+        monthlyReturn=pd.DataFrame(monthlyReturn)
+        
+        monthlyReturn.boxplot(column='close', by='Month')
+        ax = plt.gca()
+        labels = [item.get_text() for item in ax.get_xticklabels()]
+        labels=['Jan.','Feb.','Mar.','Apr.','May','June','July','Aug.','Sep.','Oct.','Nov.','Dec.']
+
+        ax.set_xticklabels(labels)
+        plt.title('of Percent Closing for %s'% (name))        
+        plt.ylabel('Percent [%]')
+        
+        plt.autoscale(True, axis='x', tight=True)
+        plt.show()
+    
     def MACD(self):         
         
         results = self.technical.MovingAverageConvergenceDivergence()
