@@ -14,10 +14,30 @@ import sys  # To find out the script name (in argv[0])
 # Import the backtrader platform
 import backtrader as bt
 
+# Create a Stratey
+class TestStrategy(bt.Strategy):
+    
+    def log(self, txt, dt=None):
+        dt = dt or self.datas[0].datetime.date(0)
+        print('%s, %s' % (dt.isoformat(), txt))
+    
+    # Keep a reference to the "close" line in the data[0] dataseries    
+    def __init__(self):
+        self.dataclose = self.datas[0].close
+    
+    # Simply log the closing price of the series from the reference
+    def next(self):
+        self.log('Close, %.2f' % self.dataclose[0])
+        
+        
+
 if __name__ == '__main__':
         
-    # Instantiate the Cerevro engine
+    # Instantiate the Cerebro engine
     cerebro = bt.Cerebro()
+    
+    # Add a strategy
+    cerebro.addstrategy(TestStrategy)
     
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
@@ -28,9 +48,9 @@ if __name__ == '__main__':
     data = bt.feeds.YahooFinanceCSVData(
         dataname=datapath,
         # Do not pass values before this date
-        fromdate=datetime.datetime(2000, 1, 1),
+        fromdate=datetime.datetime(2020, 1, 1),
         # Do not pass values after this date
-        todate=datetime.datetime(2000, 12, 31),
+        todate=datetime.datetime(2020, 12, 31),
         reverse=False)
 
     # Add the Data Feed to Cerebro
