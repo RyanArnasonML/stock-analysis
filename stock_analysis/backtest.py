@@ -3,6 +3,8 @@
 Spyder Editor
 
 This is a temporary script file.
+
+https://www.backtrader.com/docu/quickstart/quickstart/
 """
 
 from __future__ import (absolute_import, division, print_function, unicode_literals)
@@ -14,7 +16,7 @@ import sys  # To find out the script name (in argv[0])
 # Import the backtrader platform
 import backtrader as bt
 
-# Create a Stratey
+# Create a Strategy
 class TestStrategy(bt.Strategy):
     
     def log(self, txt, dt=None):
@@ -23,14 +25,20 @@ class TestStrategy(bt.Strategy):
     
     # Keep a reference to the "close" line in the data[0] dataseries    
     def __init__(self):
-        self.dataclose = self.datas[0].close
+        self.dataclose = self.datas[0].close    
     
-    # Simply log the closing price of the series from the reference
     def next(self):
+        # Simply log the closing price of the series from the reference
         self.log('Close, %.2f' % self.dataclose[0])
         
-        
-
+        # Current close less than previous close
+        if self.dataclose[0] < self.dataclose[-1]:
+            # Previous close less than the previous close
+            if self.dataclose[-1] < self.dataclose[-2]:
+                # BUY, BUY, BUY!!! (with all possible default parameters)
+                self.log('BUY Create, %.2f' % self.dataclose[0])
+                self.buy()
+  
 if __name__ == '__main__':
         
     # Instantiate the Cerebro engine
