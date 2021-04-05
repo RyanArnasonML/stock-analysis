@@ -19,7 +19,7 @@ import backtrader as bt
 # Create a Strategy
 class TestStrategy(bt.Strategy):
     params = (
-        ('exitbars',5),
+        ('maperiod',15),
               )
     
     def log(self, txt, dt=None):
@@ -34,6 +34,9 @@ class TestStrategy(bt.Strategy):
         self.order = None
         self.buyprice = None
         self.buycomm = None
+        
+        # Add a Moving Average indicator
+        self.sma = bt.indicators.SimpleMovingAverage(self.datas[0], period=self.params.maperiod)
         
     def notify_order(self, order):
         
@@ -90,16 +93,17 @@ class TestStrategy(bt.Strategy):
         if not self.position:
             
             # Not yet ... we MIGHT BUY if ...
-            if self.dataclose[0] < self.dataclose[-1]:                
-                # Previous close less than the previous close
-                if self.dataclose[-1] < self.dataclose[-2]:
-                    # BUY, BUY, BUY!!! (with all possible default parameters)
-                    self.log('BUY Create, %.2f' % self.dataclose[0])
-                    self.buy()
+            if self.dataclose[0] > self.sma[0]:                
+                
+                # BUY, BUY, BUY!!! (with all possible default parameters)
+                self.log('BUY Create, %.2f' % self.dataclose[0])
+                
+                # Keep track of the created order to avoid a 2nd order
+                self.order = self.buy()
         else:
             
             # Already in the market ... we might sell
-            if len(self) >= (self.bar_executed + self.params.exitbars):
+            if self.dataclose[0] < self.sma[0]:
                 # SELL, SELL, SELL !!! (with all possible default parameters)
                 self.log('SELL CREATE, %.2f' % self.dataclose[0])
                 
