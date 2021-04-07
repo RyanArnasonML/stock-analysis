@@ -20,11 +20,13 @@ import backtrader as bt
 class TestStrategy(bt.Strategy):
     params = (
         ('maperiod',15),
+        ('printlog',False),
               )
     
-    def log(self, txt, dt=None):
-        dt = dt or self.datas[0].datetime.date(0)
-        print('%s, %s' % (dt.isoformat(), txt))
+    def log(self, txt, dt=None, doprint=False):
+        if self.params.printlog or doprint:
+            dt = dt or self.datas[0].datetime.date(0)
+            print('%s, %s' % (dt.isoformat(), txt))
     
     # Keep a reference to the "close" line in the data[0] dataseries    
     def __init__(self):
@@ -118,6 +120,9 @@ class TestStrategy(bt.Strategy):
                 
                 # Keep track of the created order to avoid a 2nd order
                 self.order = self.sell()
+                
+    def stop(self):
+        self.log('(MA Period %2d) Ending Value %.2f' % (self.params.maperiod, self.broker.getvalue()), doprint=True)
   
 if __name__ == '__main__':
         
@@ -125,7 +130,11 @@ if __name__ == '__main__':
     cerebro = bt.Cerebro()
     
     # Add a strategy
-    cerebro.addstrategy(TestStrategy)
+    # cerebro.addstrategy(TestStrategy)
+    strats = cerebro.optstrategy(
+        TestStrategy,
+        maperiod=range(10, 31)
+        )
     
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
@@ -157,10 +166,10 @@ if __name__ == '__main__':
     print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
     
     # Run over everything
-    cerebro.run()
+    cerebro.run(maxcpus=1)
     
     # Print out the final result
     print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
     
     # Plot the result
-    cerebro.plot()
+    # cerebro.plot()
